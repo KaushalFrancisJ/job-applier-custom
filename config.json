@@ -1,0 +1,112 @@
+{
+  "candidate": {
+    "name": "Kaushal Francis J",
+    "email": "jkfrancis2003@gmail.com",
+    "phone": "+91 9342963935",
+    "current_location": "Chennai, Tamil Nadu",
+    "current_role": "Senior Associate",
+    "current_company": "Payday Suite - 4i apps solutions",
+    "linkedin": "https://linkedin.com/in/kaushalfrancisj",
+    "github": "https://github.com/kaushalfrancisj",
+    "resume_pdf": "Kaushal_Francis_J_res.pdf"
+  },
+  "preferences": {
+    "expected_ctc_lpa": 10.0,
+    "allow_undisclosed_ctc": true,
+    "currency": "INR",
+    "locations": {
+      "primary": ["Chennai", "Bangalore", "Bengaluru"],
+      "allow_any_india": true,
+      "allow_remote_india": true,
+      "strict_india_only": true,
+      "disallowed_countries": [
+        "United States",
+        "USA",
+        "San Francisco",
+        "New York",
+        "UK",
+        "United Kingdom",
+        "London",
+        "Canada",
+        "Europe",
+        "Germany"
+      ]
+    },
+    "target_roles": [
+      "AI Engineer",
+      "Generative AI Engineer",
+      "Fullstack AI Engineer",
+      "Fullstack Engineer",
+      "Backend Engineer",
+      "Software Engineer",
+      "LLM Application Engineer",
+      "Python Developer"
+    ],
+    "exclude_keywords": [
+      "research scientist",
+      "deep learning researcher",
+      "phd in machine learning",
+      "computer vision researcher",
+      "cuda kernel",
+      "pretraining from scratch",
+      "nlp research scientist"
+    ],
+    "exclude_roles": [
+      "voice",
+      "audio",
+      "speech",
+      "telecom",
+      "telephony",
+      "security",
+      "infosec",
+      "cyber",
+      "soc",
+      "frontend",
+      "front-end",
+      "front end",
+      "ui/ux",
+      "devops",
+      "sre",
+      "reliability",
+      "infrastructure",
+      "qa",
+      "tester",
+      "testing",
+      "quality assurance",
+      "sdet",
+      "data analyst",
+      "business analyst",
+      "hardware",
+      "embedded",
+      "firmware"
+    ]
+  },
+  "watcher": {
+    "active_hours": {
+      "start": "09:00",
+      "end": "19:00",
+      "timezone": "Asia/Kolkata"
+    },
+    "interval_minutes": 30,
+    "jitter_minutes": 5,
+    "max_daily_applications_per_platform": 25,
+    "platforms_enabled": ["wellfound", "linkedin", "naukri"],
+    "priority_platform": "wellfound"
+  },
+  "browser": {
+    "headless": false,
+    "user_data_dir": "./browser_profile",
+    "slow_mo_ms": 100
+  },
+  "notifications": {
+    "email_enabled": true,
+    "recipient_email": "jkfrancis2003@gmail.com",
+    "smtp_host": "smtp.gmail.com",
+    "smtp_port": 587,
+    "sender_email": "jkfrancis2003@gmail.com",
+    "smtp_app_password": "",
+    "alert_on_cloudflare": true,
+    "alert_on_action_required": true,
+    "desktop_alert_enabled": true
+  }
+}
