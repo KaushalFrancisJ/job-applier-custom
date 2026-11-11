@@ -24,20 +24,22 @@ def main():
     parser.add_argument("--watch", action="store_true", help="Start continuous morning-to-evening watcher daemon")
     parser.add_argument("--once", action="store_true", help="Run a single job sweep and exit")
     parser.add_argument("--dry-run", action="store_true", help="Simulate discovery and matching without submitting")
-    parser.add_argument("--platform", type=str, default="all", choices=["all", "wellfound", "linkedin", "naukri"], help="Target portal")
+    parser.add_argument("--platform", type=str, default="all", choices=["all", "wellfound", "cutshort", "instahyre", "linkedin", "naukri"], help="Target portal")
 
     args = parser.parse_args()
 
     # Default to single sweep if neither watch nor once specified
     if args.watch:
-        daemon = JobWatcherDaemon(WORKSPACE_DIR, dry_run=args.dry_run)
+        daemon = JobWatcherDaemon(WORKSPACE_DIR, dry_run=args.dry_run, target_platform=args.platform)
         daemon.start_loop()
     else:
         engine = JobApplierEngine(WORKSPACE_DIR, dry_run=args.dry_run)
-        stats = engine.run_sweep()
+        stats = engine.run_sweep(target_platform=args.platform)
         print("\n" + "=" * 50)
         print("SUMMARY:")
         print(f"Total Discovered: {stats['total_found']}")
+        if args.dry_run:
+            print(f"Dry-Run Matched:  {stats.get('dry_run_matches', 0)}")
         print(f"Auto-Applied:     {stats['applied']}")
         print(f"Action Required:  {stats['action_required']}")
         print(f"Filtered Out:     {stats['filtered_out']}")

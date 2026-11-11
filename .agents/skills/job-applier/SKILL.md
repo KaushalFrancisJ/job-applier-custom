@@ -4,12 +4,12 @@ description: >-
   Automated job discovery, filtering, and application skill for Kaushal Francis J.
   Use this skill whenever the user asks to search for jobs, apply for jobs,
   run the morning-to-evening persistent watcher, review application reports,
-  tailor pitches, or manage Wellfound/LinkedIn/Naukri automation.
+  tailor pitches, or manage Wellfound/Instahyre/Cutshort/LinkedIn/Naukri automation.
 ---
 
 # 🎯 Job Applier Automation Skill
 
-This skill provides the end-to-end runbook for automating job applications across **Wellfound (Priority 1)**, **LinkedIn**, and **Naukri** for **Kaushal Francis J**.
+This skill provides the end-to-end runbook for automating job applications across **Wellfound (Priority 1)**, **Instahyre (Priority 2, Google OAuth)**, **Cutshort (Priority 3, Google OAuth)**, **LinkedIn**, and **Naukri** for **Kaushal Francis J**.
 
 ---
 
@@ -53,9 +53,23 @@ This skill provides the end-to-end runbook for automating job applications acros
    * **Allowed:** Chennai, Bangalore/Bengaluru, Mumbai, Delhi/NCR, Hyderabad, Pune, anywhere in India, or **Remote within India**.
    * **Strict Exclusion:** Reject overseas / non-Indian entities (US, UK, Canada, Europe, Germany) that do not hire via Indian entities or require foreign work authorization (e.g. Infisical is US-based and must be filtered out).
 5. **URL & Discovery Integrity:**
-   * **Never fabricate, extrapolate, or synthesize dummy job URLs or IDs.** Every listing must originate from verified live feeds or genuine portal URLs.
-6. **Platform Priority:**
-   * **Wellfound First** (startup roles with customized "Pitch to Founder" notes), followed by LinkedIn and Naukri.
+   * **Never fabricate, extrapolate, or synthesize dummy job URLs or IDs.** Every listing must originate from verified live feeds or genuine candidate portal URLs.
+   * On Cutshort and Instahyre, discover candidate opportunities directly from authenticated session endpoints:
+     - Cutshort: `https://cutshort.io/profile/all-jobs?matchesfor=...` or `https://cutshort.io/profile/recommended-jobs`
+     - Instahyre: `https://www.instahyre.com/candidate/opportunities/?matching=true`
+6. **Platform Priority & Portal Execution Rules:**
+   * **Priority Order:** **Wellfound First** (early-stage startup roles with custom founder pitches), followed by **Instahyre** (high-growth tech roles via Google OAuth), **Cutshort** (AI/startup roles with custom recruiter messages), **LinkedIn**, and **Naukri**.
+   * **Cutshort Recruiter Note Automation:**
+     - On Cutshort cards/pages, trigger `Apply to this job` or `Apply now`.
+     - Detect the active recruiter modal (`To <Recruiter Name>`).
+     - Inject tailored pitch note into `textarea[placeholder*='message']`.
+     - Click `Send` and verify the status transitions to `View conversation`.
+   * **Instahyre Single-Page App (SPA) Quirks:**
+     - Query parameters like `?applied=true` automatically redirect to `?matching=true` on full page load. The `Applied jobs` tab is an internal AngularJS client-side tab state (`div:has-text('Applied jobs')`).
+     - **Selector Guard:** The `already_applied` check must *never* match global navigation tab headers (e.g., `Applied jobs (0)`), which causes false-positive early exits. Check only within specific cards or open modals.
+     - Outbound applications do not list on `/candidate/activity/` until an employer responds; verify live applications via the `Applied today` green badge in the `Applied jobs` tab.
+   * **Shared Playwright Driver Lifecycle:**
+     - Never initialize multiple concurrent `sync_playwright().start()` instances in the same thread (causes `Sync API inside asyncio loop` errors and user-data-dir locking). All platforms must share the single `PlaywrightDriver` created by `JobApplierEngine`.
 
 ---
 

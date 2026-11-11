@@ -35,7 +35,7 @@ class ReportGenerator:
             "",
             "| Metric | Count | Notes |",
             "| :--- | :---: | :--- |",
-            f"| **Total Processed Today** | **{len(today_jobs)}** | Jobs discovered across Wellfound, LinkedIn & Naukri |",
+            f"| **Total Processed Today** | **{len(today_jobs)}** | Jobs discovered across Wellfound, Instahyre, Cutshort, LinkedIn & Naukri |",
             f"| ✅ **Auto-Applied** | **{len(applied)}** | Successfully submitted with custom pitch |",
             f"| ⚠️ **Action Required** | **{len(action_req)}** | Needs your manual submission or external test |",
             f"| 🚫 **Filtered Out** | **{len(skipped)}** | Pure ML excluded / salary < 10 LPA / mismatch |",

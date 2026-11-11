@@ -15,12 +15,12 @@ logger = logging.getLogger("wellfound")
 
 
 class WellfoundPlatform(BasePlatform):
-    def __init__(self, config: dict, notifier=None):
+    def __init__(self, config: dict, notifier=None, driver: Optional[PlaywrightDriver] = None):
         super().__init__(config)
         self.user_data_dir = Path(config.get("browser", {}).get("user_data_dir", "./browser_profile"))
         self.headless = config.get("browser", {}).get("headless", False)
         self.notifier = notifier
-        self._driver: Optional[PlaywrightDriver] = None
+        self._driver: Optional[PlaywrightDriver] = driver
 
     def _get_driver(self) -> PlaywrightDriver:
         if self._driver is None:

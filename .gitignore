@@ -38,6 +38,7 @@ secrets.json
 test_*.py
 verify_*.py
 scraped_*.json
+scratch/
 
 # Logs & Temporary Files
 *.log

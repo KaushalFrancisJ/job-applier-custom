@@ -18,9 +18,10 @@ logger = logging.getLogger("watcher")
 
 
 class JobWatcherDaemon:
-    def __init__(self, workspace_dir: Path, dry_run: bool = False):
+    def __init__(self, workspace_dir: Path, dry_run: bool = False, target_platform: str = "all"):
         self.workspace_dir = workspace_dir
         self.dry_run = dry_run
+        self.target_platform = target_platform
         self.engine = JobApplierEngine(workspace_dir, dry_run=dry_run)
         self.running = True
         self.cycle_count = 0
@@ -54,7 +55,8 @@ class JobWatcherDaemon:
         print(f"Candidate: {self.engine.profile.name} | Target: ≥ {self.engine.profile.expected_ctc_lpa} LPA")
         print(f"Active Window: {self.active_hours.get('start')} - {self.active_hours.get('end')} IST")
         print(f"Interval: ~{self.interval_seconds // 60} minutes (with jitter)")
-        print(f"Prioritizing: Wellfound ➔ LinkedIn ➔ Naukri")
+        print(f"Target Platform: {self.target_platform.upper()}")
+        print(f"Prioritizing: Wellfound ➔ Instahyre ➔ Cutshort ➔ LinkedIn ➔ Naukri")
         print("Press Ctrl+C at any time in the evening to cleanly stop.")
         print("=" * 70)
 
@@ -65,7 +67,7 @@ class JobWatcherDaemon:
 
             # Execute job sweep
             try:
-                stats = self.engine.run_sweep()
+                stats = self.engine.run_sweep(target_platform=self.target_platform)
                 print(
                     f"✨ Sweep finished: {stats['applied']} Applied, "
                     f"{stats['action_required']} Action Required, "

@@ -30,9 +30,10 @@ python run.py --dry-run
 
 ## 🧠 Core Features & Architecture
 
-1. **Prioritizing Wellfound First**:
-   * Evaluates startup roles on Wellfound first, followed by LinkedIn and Naukri.
-   * Generates tailored, high-converting **"Pitch to Founder"** notes based on your specific GitHub projects.
+1. **Multi-Portal Priority Pipeline (Wellfound ➔ Instahyre ➔ Cutshort ➔ LinkedIn ➔ Naukri)**:
+   * Evaluates startup roles on **Wellfound** first, followed by **Instahyre**, **Cutshort**, **LinkedIn**, and **Naukri**.
+   * Integrates seamless **Google OAuth 2.0 authentication** on Cutshort and Instahyre using your persistent signed-in browser profile (`browser_profile/`).
+   * Generates tailored, high-converting **"Pitch to Founder / Recruiter"** notes based on your specific GitHub projects.
 
 2. **Smart Filter (Target Applied AI / GenAI / Fullstack, Exclude Pure ML)**:
    * **Target Roles:** AI Engineer, Generative AI Engineer, Fullstack AI Engineer, Backend Engineer (Python/Node.js).
@@ -80,6 +81,8 @@ job-applier-custom/
     ├── state_manager.py                 # Idempotency & database persistence
     └── platforms/                       # Platform-specific integrations
         ├── wellfound.py                 # Wellfound (Priority 1)
+        ├── instahyre.py                 # Instahyre (Priority 2, Google OAuth)
+        ├── cutshort.py                  # Cutshort (Priority 3, Google OAuth)
         ├── linkedin.py                  # LinkedIn Easy Apply
         └── naukri.py                    # Naukri Quick Apply
 ```

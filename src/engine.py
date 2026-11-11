@@ -9,9 +9,12 @@ from pathlib import Path
 from typing import Dict, List
 
 from src.candidate_profile import load_candidate_profile
+from src.browser_driver import PlaywrightDriver
 from src.discovery import JobDiscoveryEngine
 from src.matcher import JobMatcher
 from src.notifier import AlertNotifier
+from src.platforms.cutshort import CutshortPlatform
+from src.platforms.instahyre import InstahyrePlatform
 from src.platforms.linkedin import LinkedInPlatform
 from src.platforms.naukri import NaukriPlatform
 from src.platforms.wellfound import WellfoundPlatform
@@ -43,24 +46,36 @@ class JobApplierEngine:
         self.discovery = JobDiscoveryEngine(self.config)
         self.notifier = AlertNotifier(self.config)
 
+        # Shared browser driver across platforms
+        self.driver = PlaywrightDriver(
+            user_data_dir=Path(self.config.get("browser", {}).get("user_data_dir", "./browser_profile")),
+            headless=self.config.get("browser", {}).get("headless", False),
+            notifier=self.notifier,
+        )
+
         # Platforms
         self.platforms = {
-            "wellfound": WellfoundPlatform(self.config, notifier=self.notifier),
+            "wellfound": WellfoundPlatform(self.config, notifier=self.notifier, driver=self.driver),
+            "cutshort": CutshortPlatform(self.config, notifier=self.notifier, driver=self.driver),
+            "instahyre": InstahyrePlatform(self.config, notifier=self.notifier, driver=self.driver),
             "linkedin": LinkedInPlatform(self.config),
             "naukri": NaukriPlatform(self.config),
         }
 
-    def run_sweep(self) -> Dict[str, any]:
+    def run_sweep(self, target_platform: str = "all") -> Dict[str, any]:
         """
         Executes one complete sweep:
         1. Discovers jobs
         2. Filters duplicates and irrelevant roles (pure ML, low salary)
-        3. Prioritizes Wellfound
+        3. Prioritizes Wellfound -> Instahyre -> Cutshort -> LinkedIn -> Naukri
         4. Applies or marks Action Required
         5. Generates Daily Report
         """
-        print(f"\n[{datetime.now().strftime('%H:%M:%S')}] 🔍 Starting job discovery sweep...")
+        print(f"\n[{datetime.now().strftime('%H:%M:%S')}] 🔍 Starting job discovery sweep (Platform: {target_platform})...")
         discovered = self.discovery.fetch_live_job_opportunities()
+
+        if target_platform and target_platform.lower() != "all":
+            discovered = [j for j in discovered if j.platform.lower() == target_platform.lower()]
 
         sweep_stats = {
             "total_found": len(discovered),
@@ -68,11 +83,14 @@ class JobApplierEngine:
             "action_required": 0,
             "filtered_out": 0,
             "skipped_known": 0,
+            "dry_run_matches": 0,
         }
 
-        # Sort jobs so Wellfound is prioritized first
+        # Sort jobs according to platform priority: Wellfound -> Instahyre -> Cutshort -> LinkedIn -> Naukri
+        priority_order = {"wellfound": 0, "instahyre": 1, "cutshort": 2, "linkedin": 3, "naukri": 4}
+
         def platform_priority(job):
-            return 0 if job.platform == "wellfound" else 1
+            return priority_order.get(job.platform, 99)
 
         discovered.sort(key=platform_priority)
 
@@ -168,6 +186,11 @@ class JobApplierEngine:
                 sweep_stats["filtered_out"] += 1
                 action_notes = "Listing expired or no longer available."
                 print(f"  🚫 Expired [{raw_job.company} - {raw_job.title}]: Listing is closed")
+            elif self.dry_run:
+                status = "DRY_RUN"
+                sweep_stats["dry_run_matches"] += 1
+                action_notes = f"Dry-run simulation: Matched ({eval_res.score:.0f}%) and ready to apply."
+                print(f"  🔍 Dry-Run Match [{raw_job.platform.capitalize()}]: {raw_job.company} - {raw_job.title} ({eval_res.score:.0f}% match)")
             else:
                 status = "ACTION_REQUIRED"
                 sweep_stats["action_required"] += 1
@@ -196,9 +219,8 @@ class JobApplierEngine:
         report_path = self.reporter.generate_daily_report(all_records)
         print(f"📄 Updated daily report: {report_path.name}")
 
-        # Clean up browser driver context
-        for p in self.platforms.values():
-            if hasattr(p, "_driver") and p._driver:
-                p._driver.close()
+        # Clean up shared browser driver context
+        if hasattr(self, "driver") and self.driver:
+            self.driver.close()
 
         return sweep_stats
