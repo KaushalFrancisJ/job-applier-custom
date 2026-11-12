@@ -55,6 +55,8 @@ class JobMatcher:
         salary_str: str = "",
         external_url: Optional[str] = None,
         has_custom_questions: bool = False,
+        company: str = "",
+        platform: str = "",
     ) -> MatchResult:
         """
         Runs comprehensive checks:
@@ -193,7 +195,7 @@ class JobMatcher:
             action_notes.append("JD requests specific assignment/video or complex screening responses.")
 
         # 6. Generate Tailored Pitch Note
-        pitch = self._generate_pitch(title, desc_lower, genai_hits, fullstack_hits)
+        pitch = self._generate_pitch(title, desc_lower, genai_hits, fullstack_hits, company=company, platform=platform)
 
         return MatchResult(
             is_match=True,
@@ -237,10 +239,40 @@ class JobMatcher:
 
         return True, "Salary format unparsed, assuming eligible"
 
-    def _generate_pitch(self, title: str, desc: str, genai_hits: List[str], fullstack_hits: List[str]) -> str:
+    def _generate_pitch(
+        self,
+        title: str,
+        desc: str,
+        genai_hits: List[str],
+        fullstack_hits: List[str],
+        company: str = "",
+        platform: str = "",
+    ) -> str:
         """
-        Generates a concise, impactful application note citing Kaushal's actual repos.
+        Hybrid Pitch Synthesis:
+        1. Attempts bespoke synthesis via `agy` CLI connecting Kaushal's verified metrics & MCP/RAG
+           repos to the company's specific mission.
+        2. Falls back instantly to deterministic vectored templates if agy times out or is offline.
         """
+        if company and self.agy:
+            try:
+                prompt = (
+                    f"You are Kaushal Francis J applying to {company} for the role of {title}.\n"
+                    f"Candidate Background: Senior Associate at Payday Suite, improved enterprise RAG accuracy by 40% "
+                    f"with AWS Bedrock Titan + PgVector, built open-source NVIDIA NIM Desktop Coding Agent with Model Context Protocol (MCP) "
+                    f"and async streaming (github.com/KaushalFrancisJ/Coding-agent-nvidia), and built production HabitFlow API (Redis/Docker).\n"
+                    f"Job Description Context: {desc[:400]}\n\n"
+                    f"Write a punchy, authentic 3-sentence application note to the hiring team. "
+                    f"Connect your actual project experience directly to their specific product/mission, cite the +40% metric or MCP repo, "
+                    f"and keep it under 65 words. No placeholders."
+                )
+                bespoke = self.agy.ask(prompt, timeout_seconds=15)
+                if bespoke and len(bespoke) > 40 and not bespoke.startswith("Error"):
+                    return bespoke
+            except Exception as e:
+                logger.warning(f"[Matcher] agy pitch synthesis fallback: {e}")
+
+        # Deterministic Vectored Fallback
         if len(genai_hits) >= len(fullstack_hits) and ("rag" in desc or "vector" in desc or "bedrock" in desc):
             return (
                 f"Hi team, I saw your opening for {title} and wanted to reach out. "

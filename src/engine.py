@@ -121,6 +121,8 @@ class JobApplierEngine:
                 salary_str=raw_job.salary,
                 external_url=raw_job.external_url,
                 has_custom_questions=raw_job.has_custom_screening,
+                company=raw_job.company,
+                platform=raw_job.platform,
             )
 
             now_str = datetime.now().isoformat()

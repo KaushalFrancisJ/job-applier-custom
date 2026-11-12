@@ -148,8 +148,10 @@ open_browser.bat
 
 ---
 
-## 📝 Pitch Generation Strategy
+## 📝 Pitch Generation Strategy: Hybrid Bespoke Synthesis
 
-* **If JD highlights RAG / Vector DBs:** Cite 40% RAG accuracy gain with AWS Bedrock Titan + PgVector + Groq LLM evaluation.
-* **If JD highlights Agents / Python / Tool-calling:** Cite NVIDIA NIM Desktop Coding Agent with MCP integration.
-* **If JD highlights Fullstack / Backend / APIs:** Cite Next.js + FastAPI + HabitFlow Redis architecture.
+1. **Bespoke CLI Generation (`agy -p`):** For matched roles, the engine calls `agy` non-interactively to generate a 3-sentence, tailored pitch referencing the company's specific mission, Kaushal's +40% RAG accuracy gain, or his NVIDIA NIM MCP Coding Agent repository.
+2. **Deterministic Vectored Fallback:** If `agy` takes longer than 15s or is unavailable, it immediately falls back to verified templates:
+   * **If JD highlights RAG / Vector DBs:** Cite 40% RAG accuracy gain with AWS Bedrock Titan + PgVector + Groq LLM evaluation.
+   * **If JD highlights Agents / Python / Tool-calling:** Cite NVIDIA NIM Desktop Coding Agent with MCP integration.
+   * **If JD highlights Fullstack / Backend / APIs:** Cite Next.js + FastAPI + HabitFlow Redis architecture.

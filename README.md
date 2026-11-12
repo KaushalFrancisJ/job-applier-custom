@@ -111,11 +111,13 @@ The matcher ([`src/matcher.py`](src/matcher.py)) evaluates the role substance be
 * **Compensation Floor:** Strictly enforces **≥ 10 LPA INR** (or competitive market standard). Roles offering below ₹10 LPA (e.g. ₹3L – ₹8L) are automatically rejected.
 * **Indian Roles Only:** Rejects US/EU companies requiring foreign work authorization.
 
-### Stage 4: Dynamic Project & Pitch Tailoring
-The engine customizes every outbound message using your verified GitHub projects and enterprise experience:
-* **If JD highlights RAG / Vector DBs:** Cites 40% RAG accuracy gain at Payday Suite using AWS Bedrock Titan embeddings, PgVector, and Groq LLM evaluation.
-* **If JD highlights Agents / Python / Tool-calling:** Cites your [NVIDIA NIM Desktop Coding Agent with MCP](https://github.com/KaushalFrancisJ/Coding-agent-nvidia).
-* **If JD highlights Fullstack / Backend / APIs:** Cites your [HabitFlow Production API](https://github.com/KaushalFrancisJ/Habit-Formation-Application) (Node.js/TypeScript/Redis) and FastAPI architectures.
+### Stage 4: Hybrid Bespoke Pitch Synthesis (agy CLI + Vectored Fallback)
+The engine creates outbound application pitches using a hybrid two-tier approach:
+1. **Bespoke CLI Synthesis (`agy -p`):** For matched roles and YC founder notes, the engine invokes the local Antigravity CLI non-interactively to generate a 3-sentence, hyper-personalized pitch connecting the specific company's product mission to your verified projects and metrics (+40% RAG accuracy gain, MCP Coding Agent, HabitFlow).
+2. **Deterministic Vectored Fallback:** If `agy` is offline or exceeds a 15-second timeout, the engine instantaneously falls back to deterministic rule-based templates:
+   * **If JD highlights RAG / Vector DBs:** Cites 40% RAG accuracy gain at Payday Suite using AWS Bedrock Titan embeddings, PgVector, and Groq LLM evaluation.
+   * **If JD highlights Agents / Python / Tool-calling:** Cites your [NVIDIA NIM Desktop Coding Agent with MCP](https://github.com/KaushalFrancisJ/Coding-agent-nvidia).
+   * **If JD highlights Fullstack / Backend / APIs:** Cites your [HabitFlow Production API](https://github.com/KaushalFrancisJ/Habit-Formation-Application) (Node.js/TypeScript/Redis) and FastAPI architectures.
 
 ### Stage 5: Live Browser Automation & Modal Interaction
 For matched, unapplied jobs, Playwright executes live interactions using your persistent Chrome profile:
