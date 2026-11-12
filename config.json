@@ -90,7 +90,7 @@
     "interval_minutes": 30,
     "jitter_minutes": 5,
     "max_daily_applications_per_platform": 25,
-    "platforms_enabled": ["wellfound", "instahyre", "cutshort", "linkedin", "naukri"],
+    "platforms_enabled": ["wellfound", "workatastartup", "instahyre", "cutshort", "hirist", "linkedin", "naukri"],
     "priority_platform": "wellfound"
   },
   "browser": {

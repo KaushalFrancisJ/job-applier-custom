@@ -4,12 +4,12 @@ description: >-
   Automated job discovery, filtering, and application skill for Kaushal Francis J.
   Use this skill whenever the user asks to search for jobs, apply for jobs,
   run the morning-to-evening persistent watcher, review application reports,
-  tailor pitches, or manage Wellfound/Instahyre/Cutshort/LinkedIn/Naukri automation.
+  tailor pitches, or manage Wellfound/WorkAtAStartup/Instahyre/Cutshort/Hirist/LinkedIn/Naukri automation.
 ---
 
 # 🎯 Job Applier Automation Skill
 
-This skill provides the end-to-end runbook for automating job applications across **Wellfound (Priority 1)**, **Instahyre (Priority 2, Google OAuth)**, **Cutshort (Priority 3, Google OAuth)**, **LinkedIn**, and **Naukri** for **Kaushal Francis J**.
+This skill provides the end-to-end runbook for automating job applications across **Wellfound (Priority 1)**, **Work at a Startup / Y Combinator (Priority 2)**, **Instahyre (Priority 3, Google OAuth)**, **Cutshort (Priority 4, Google OAuth)**, **Hirist (Priority 5)**, **LinkedIn**, and **Naukri** for **Kaushal Francis J**.
 
 ---
 
@@ -58,16 +58,29 @@ This skill provides the end-to-end runbook for automating job applications acros
      - Cutshort: `https://cutshort.io/profile/all-jobs?matchesfor=...` or `https://cutshort.io/profile/recommended-jobs`
      - Instahyre: `https://www.instahyre.com/candidate/opportunities/?matching=true`
 6. **Platform Priority & Portal Execution Rules:**
-   * **Priority Order:** **Wellfound First** (early-stage startup roles with custom founder pitches), followed by **Instahyre** (high-growth tech roles via Google OAuth), **Cutshort** (AI/startup roles with custom recruiter messages), **LinkedIn**, and **Naukri**.
+   * **Priority Order:** **Wellfound First** (early-stage startup roles with custom founder pitches), followed by **Work at a Startup / YC** (top global YC startups with direct founder notes), **Instahyre** (high-growth tech roles via Google OAuth), **Cutshort** (AI/startup roles with custom recruiter messages), **Hirist** (premium Indian tech roles), **LinkedIn**, and **Naukri**.
+   * **Work at a Startup (YC) Founder Message Automation:**
+     - Navigate to `workatastartup.com/jobs/<id>`.
+     - Check `.company-action` button status (`'Applied'` indicates already applied).
+     - Trigger Apply (`.company-action:has-text('Apply')`).
+     - In the YC application modal, inject tailored founder pitch note highlighting agentic systems, MCP, and RAG architectures.
+     - Submit to founders (`button:has-text('Send application')`).
+   * **Hirist (hirist.tech) 1-Click Application:**
+     - Navigate to `hirist.tech/j/<slug-id>`.
+     - Verify live compensation headers (e.g. ₹15L - ₹25L).
+     - Check if already applied (`button:has-text('Applied')`).
+     - Click `button:has-text('Apply')`.
+     - In recruiter note modal, inject pitch note and attach `Kaushal_Francis_J_res.pdf`.
+     - Submit application and confirm status.
    * **Cutshort Recruiter Note Automation:**
      - On Cutshort cards/pages, trigger `Apply to this job` or `Apply now`.
      - Detect the active recruiter modal (`To <Recruiter Name>`).
      - Inject tailored pitch note into `textarea[placeholder*='message']`.
      - Click `Send` and verify the status transitions to `View conversation`.
    * **Instahyre Single-Page App (SPA) Quirks:**
-     - Query parameters like `?applied=true` automatically redirect to `?matching=true` on full page load. The `Applied jobs` tab is an internal AngularJS client-side tab state (`div:has-text('Applied jobs')`).
-     - **Selector Guard:** The `already_applied` check must *never* match global navigation tab headers (e.g., `Applied jobs (0)`), which causes false-positive early exits. Check only within specific cards or open modals.
-     - Outbound applications do not list on `/candidate/activity/` until an employer responds; verify live applications via the `Applied today` green badge in the `Applied jobs` tab.
+     - Query parameters like `?applied=true` automatically redirect to `?matching=true` on full page load.
+     - **Selector Guard:** The `already_applied` check must *never* match global navigation tab headers (e.g., `Applied jobs (0)`) or JD text substrings like "AI Applied Engineer". Match only the action button (`button:has-text('Application sent!')`).
+     - Verify live applications via the `Applied today` green badge in the `Applied jobs` tab.
    * **Shared Playwright Driver Lifecycle:**
      - Never initialize multiple concurrent `sync_playwright().start()` instances in the same thread (causes `Sync API inside asyncio loop` errors and user-data-dir locking). All platforms must share the single `PlaywrightDriver` created by `JobApplierEngine`.
 

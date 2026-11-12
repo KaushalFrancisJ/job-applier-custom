@@ -14,10 +14,12 @@ from src.discovery import JobDiscoveryEngine
 from src.matcher import JobMatcher
 from src.notifier import AlertNotifier
 from src.platforms.cutshort import CutshortPlatform
+from src.platforms.hirist import HiristPlatform
 from src.platforms.instahyre import InstahyrePlatform
 from src.platforms.linkedin import LinkedInPlatform
 from src.platforms.naukri import NaukriPlatform
 from src.platforms.wellfound import WellfoundPlatform
+from src.platforms.workatastartup import WorkAtAStartupPlatform
 from src.reporter import ReportGenerator
 from src.state_manager import JobRecord, StateManager
 
@@ -56,8 +58,10 @@ class JobApplierEngine:
         # Platforms
         self.platforms = {
             "wellfound": WellfoundPlatform(self.config, notifier=self.notifier, driver=self.driver),
+            "workatastartup": WorkAtAStartupPlatform(self.config, notifier=self.notifier, driver=self.driver),
             "cutshort": CutshortPlatform(self.config, notifier=self.notifier, driver=self.driver),
             "instahyre": InstahyrePlatform(self.config, notifier=self.notifier, driver=self.driver),
+            "hirist": HiristPlatform(self.config, notifier=self.notifier, driver=self.driver),
             "linkedin": LinkedInPlatform(self.config),
             "naukri": NaukriPlatform(self.config),
         }
@@ -67,12 +71,13 @@ class JobApplierEngine:
         Executes one complete sweep:
         1. Discovers jobs
         2. Filters duplicates and irrelevant roles (pure ML, low salary)
-        3. Prioritizes Wellfound -> Instahyre -> Cutshort -> LinkedIn -> Naukri
+        3. Prioritizes Wellfound -> WorkAtAStartup -> Instahyre -> Cutshort -> Hirist -> LinkedIn -> Naukri
         4. Applies or marks Action Required
         5. Generates Daily Report
         """
         print(f"\n[{datetime.now().strftime('%H:%M:%S')}] 🔍 Starting job discovery sweep (Platform: {target_platform})...")
-        discovered = self.discovery.fetch_live_job_opportunities()
+        driver_for_discovery = None if self.dry_run else self.driver
+        discovered = self.discovery.fetch_live_job_opportunities(driver=driver_for_discovery)
 
         if target_platform and target_platform.lower() != "all":
             discovered = [j for j in discovered if j.platform.lower() == target_platform.lower()]
@@ -86,8 +91,16 @@ class JobApplierEngine:
             "dry_run_matches": 0,
         }
 
-        # Sort jobs according to platform priority: Wellfound -> Instahyre -> Cutshort -> LinkedIn -> Naukri
-        priority_order = {"wellfound": 0, "instahyre": 1, "cutshort": 2, "linkedin": 3, "naukri": 4}
+        # Sort jobs according to platform priority: Wellfound -> WorkAtAStartup -> Instahyre -> Cutshort -> Hirist -> LinkedIn -> Naukri
+        priority_order = {
+            "wellfound": 0,
+            "workatastartup": 1,
+            "instahyre": 2,
+            "cutshort": 3,
+            "hirist": 4,
+            "linkedin": 5,
+            "naukri": 6,
+        }
 
         def platform_priority(job):
             return priority_order.get(job.platform, 99)

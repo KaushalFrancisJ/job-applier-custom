@@ -24,7 +24,7 @@ def main():
     parser.add_argument("--watch", action="store_true", help="Start continuous morning-to-evening watcher daemon")
     parser.add_argument("--once", action="store_true", help="Run a single job sweep and exit")
     parser.add_argument("--dry-run", action="store_true", help="Simulate discovery and matching without submitting")
-    parser.add_argument("--platform", type=str, default="all", choices=["all", "wellfound", "cutshort", "instahyre", "linkedin", "naukri"], help="Target portal")
+    parser.add_argument("--platform", type=str, default="all", choices=["all", "wellfound", "workatastartup", "cutshort", "instahyre", "hirist", "linkedin", "naukri"], help="Target portal")
 
     args = parser.parse_args()
 

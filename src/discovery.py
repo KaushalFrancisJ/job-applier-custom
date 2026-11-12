@@ -18,10 +18,10 @@ class JobDiscoveryEngine:
         self.config = config
         self.prefs = config.get("preferences", {})
 
-    def fetch_live_job_opportunities(self) -> List[RawJob]:
+    def fetch_live_job_opportunities(self, driver=None) -> List[RawJob]:
         """
         Discovers active opportunities across target platforms.
-        Combines known startup listings and portal job cards.
+        Combines known startup listings, portal job cards, and dynamic portal feeds.
         """
         jobs: List[RawJob] = []
 
@@ -342,7 +342,72 @@ class JobDiscoveryEngine:
                 "external_url": None,
                 "has_custom_screening": False,
             },
+            {
+                "platform": "wellfound",
+                "title": "SDE-1 (Full-Stack & AI Agents)",
+                "company": "Zenskar",
+                "location": "Bengaluru",
+                "salary": "₹15L – ₹25L",
+                "description": "Fullstack engineering using Python, Postgres, and AWS, with direct responsibilities building AI agents that automate financial workflows and building APIs for complex data models.",
+                "url": "https://wellfound.com/jobs/4821657-sde-1",
+                "is_easy_apply": True,
+                "external_url": None,
+                "has_custom_screening": False,
+            },
+            {
+                "platform": "wellfound",
+                "title": "Senior Associate AI Engineer",
+                "company": "Emplay",
+                "location": "Bengaluru • Remote (Work from Home)",
+                "salary": "₹10L – ₹14L",
+                "description": "Enterprise Generative AI, RAG optimization with AWS Bedrock and pgvector, building Model Context Protocol (MCP) servers, and AWS Lambda / SQS.",
+                "url": "https://wellfound.com/jobs/4750163-senior-associate-ai-engineer",
+                "is_easy_apply": True,
+                "external_url": None,
+                "has_custom_screening": False,
+            },
+            {
+                "platform": "instahyre",
+                "title": "GenAI Engineer",
+                "company": "Privado.ai",
+                "location": "Remote (Work from Home)",
+                "salary": "₹14L – ₹22L",
+                "description": "Build agentic copilot workflows, multi-tool integrations, vector retrieval RAG pipelines, and custom LLM evaluation suites testing correctness and latency.",
+                "url": "https://www.instahyre.com/job-390702-genai-engineer-at-privado-work-from-home",
+                "is_easy_apply": True,
+                "external_url": None,
+                "has_custom_screening": False,
+            },
+            {
+                "platform": "workatastartup",
+                "title": "Founding Engineer (AI + Backend) - Remote, India",
+                "company": "Openbenchmarks",
+                "location": "Remote (India)",
+                "salary": "₹15L – ₹30L",
+                "description": "We help humans & agents pick tools via Independent Benchmarks. Founding Engineer building AI agents, tool-calling pipelines, Python async backends, evaluation benches, and MCP integrations.",
+                "url": "https://www.workatastartup.com/jobs/122213",
+                "is_easy_apply": True,
+                "external_url": None,
+                "has_custom_screening": False,
+            },
+            {
+                "platform": "hirist",
+                "title": "AI Engineer - LLM/RAG - Fintech Domain",
+                "company": "FinTech AI Innovators",
+                "location": "Bangalore",
+                "salary": "15-25 LPA",
+                "description": "Enterprise Generative AI, RAG pipelines, LangChain, LLMs, Python FastAPI backend engineering, and vector retrieval in financial services domain.",
+                "url": "https://www.hirist.tech/j/ai-engineer-llm-rag-fintech-domain-1681776",
+                "is_easy_apply": True,
+                "external_url": None,
+                "has_custom_screening": False,
+            },
         ]
+
+        # Dynamically discover newly posted jobs from live portals if driver is active
+        if driver:
+            live_discovered = self._discover_from_live_portals(driver)
+            seed_jobs.extend(live_discovered)
 
         # Also dynamically load any external discovery feed if present
         from pathlib import Path
@@ -356,7 +421,13 @@ class JobDiscoveryEngine:
             except Exception as e:
                 logger.warning(f"Error loading discovery_feed.json: {e}")
 
+        seen_urls = set()
         for s in seed_jobs:
+            url_clean = s.get("url", "").split("?")[0]
+            if url_clean in seen_urls:
+                continue
+            seen_urls.add(url_clean)
+
             job_id = hashlib.sha256(f"{s['platform']}:{s['title']}:{s['company']}".encode()).hexdigest()[:16]
             jobs.append(
                 RawJob(
@@ -375,3 +446,92 @@ class JobDiscoveryEngine:
             )
 
         return jobs
+
+    def _discover_from_live_portals(self, driver) -> List[dict]:
+        """
+        Dynamically discovers live matching job cards from authenticated portals (Hirist, WAAS)
+        using the shared PlaywrightDriver.
+        """
+        extra_jobs = []
+        if not driver:
+            return extra_jobs
+
+        try:
+            context = driver.start()
+            page = context.new_page()
+
+            # 1. Dynamic Hirist Jobfeed Discovery
+            try:
+                page.goto("https://www.hirist.tech/jobfeed", wait_until="domcontentloaded", timeout=20000)
+                page.wait_for_timeout(2500)
+                for a in page.locator("a[href*='/j/']").all():
+                    href = a.get_attribute("href")
+                    text = a.inner_text().strip()
+                    if not href or not text or len(text) < 15:
+                        continue
+                    full_url = href if href.startswith("http") else f"https://www.hirist.tech{href}"
+                    clean_url = full_url.split("?")[0]
+                    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+                    title_company = lines[0] if lines else "Software Engineer"
+                    if " - " in title_company:
+                        parts = title_company.split(" - ", 1)
+                        company = parts[0].strip()
+                        title = parts[1].strip()
+                    else:
+                        company = "Hirist Recruiter"
+                        title = title_company
+
+                    salary = "Competitive"
+                    location = "Bangalore"
+                    for ln in lines[1:]:
+                        if any(tok in ln.lower() for tok in ["lpa", "lacs", "lac", "₹"]):
+                            salary = ln
+                        if any(loc in ln.lower() for loc in ["bangalore", "remote", "chennai", "hyderabad", "pune", "delhi", "mumbai"]):
+                            location = ln
+
+                    extra_jobs.append({
+                        "platform": "hirist",
+                        "title": title,
+                        "company": company,
+                        "location": location,
+                        "salary": salary,
+                        "description": f"{title} at {company}. Skills: {', '.join(lines[1:])}",
+                        "url": clean_url,
+                        "is_easy_apply": True,
+                        "external_url": None,
+                        "has_custom_screening": False,
+                    })
+            except Exception as e:
+                logger.warning(f"[Discovery] Dynamic Hirist sweep warning: {e}")
+
+            # 2. Dynamic WAAS Discovery
+            try:
+                page.goto("https://www.workatastartup.com/companies?role=eng&layout=list-compact", wait_until="domcontentloaded", timeout=20000)
+                page.wait_for_timeout(2500)
+                for a in page.locator("a[href*='/jobs/']").all():
+                    href = a.get_attribute("href")
+                    text = a.inner_text().strip()
+                    if not href or not text or len(text) < 5 or any(r in href for r in ["/r/"]) or text.lower() == "view job":
+                        continue
+                    full_url = href if href.startswith("http") else f"https://www.workatastartup.com{href}"
+                    clean_url = full_url.split("?")[0]
+                    extra_jobs.append({
+                        "platform": "workatastartup",
+                        "title": text,
+                        "company": "YC Startup",
+                        "location": "Remote (India)",
+                        "salary": "Competitive",
+                        "description": f"{text} at Y Combinator Work at a Startup.",
+                        "url": clean_url,
+                        "is_easy_apply": True,
+                        "external_url": None,
+                        "has_custom_screening": False,
+                    })
+            except Exception as e:
+                logger.warning(f"[Discovery] Dynamic WAAS sweep warning: {e}")
+
+            page.close()
+        except Exception as e:
+            logger.warning(f"[Discovery] Dynamic portal sweep error: {e}")
+
+        return extra_jobs

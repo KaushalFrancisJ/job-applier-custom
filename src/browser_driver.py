@@ -727,7 +727,11 @@ class PlaywrightDriver:
                 "this opportunity is closed",
                 "opportunity is closed",
                 "job is closed",
+                "this job is closed",
                 "this job is no longer active",
+                "this job is no longer accepting applications",
+                "no longer accepting applications",
+                "applications are closed",
                 "page not found",
                 "404 not found",
             ]):
@@ -762,9 +766,9 @@ class PlaywrightDriver:
                     page.goto(url, wait_until="domcontentloaded", timeout=30000)
                     page.wait_for_timeout(2000)
 
-            # Check if already applied
+            # Check if already applied (strictly check button text to avoid matching "Applied AI Engineer" in JD)
             already_applied = page.locator(
-                "button:has-text('Applied'), button:has-text('Already Applied'), div:has-text('Applied'), span:has-text('Applied')"
+                "button:has-text('Application sent!'), button:has-text('Application sent'), button:has-text('Already Applied'), a.btn:has-text('Application sent!')"
             )
             if already_applied.count() > 0 and already_applied.first.is_visible():
                 logger.info(f"[Instahyre Live] Already applied to {url}.")
@@ -806,6 +810,10 @@ class PlaywrightDriver:
                     page.close()
                     return False, f"EXTERNAL_LINK: {href}"
                 else:
+                    if any(k in page_content for k in ["no longer accepting", "closed", "expired"]):
+                        print(f"🚫 Listing is expired or closed: {url}")
+                        page.close()
+                        return False, "EXPIRED"
                     logger.warning(f"[Instahyre Live] Could not find Apply button on {url}.")
                     page.close()
                     return False, "NO_APPLY_BUTTON"
@@ -878,5 +886,295 @@ class PlaywrightDriver:
         except Exception as e:
             logger.error(f"[Instahyre Live] Error during application: {e}")
             print(f"❌ Error during Instahyre application: {e}")
+            page.close()
+            return False, f"ERROR: {e}"
+
+    def apply_hirist(
+        self,
+        url: str,
+        pitch_note: str,
+        resume_path: Optional[Path] = None,
+        min_salary_lpa: float = 10.0,
+    ) -> Tuple[bool, str]:
+        """
+        Executes live application on Hirist (hirist.tech):
+        1. Navigates to job URL
+        2. Checks Cloudflare
+        3. Scrapes and validates live compensation from DOM (aborts if < min_salary_lpa)
+        4. Verifies if already applied
+        5. Clicks 'Apply' button
+        6. Injects pitch note if recruiter message / note textarea appears
+        7. Attaches resume if file upload input appears
+        8. Confirms submission
+        """
+        context = self.start()
+        page = context.new_page()
+        try:
+            logger.info(f"[Hirist Live] Navigating to {url}...")
+            print(f"🌐 Navigating to Hirist: {url}...")
+            page.goto(url, wait_until="domcontentloaded", timeout=30000)
+            page.wait_for_timeout(2500)
+
+            # Check Cloudflare
+            if self.check_cloudflare_challenge(page, "hirist", url):
+                page.close()
+                return False, "CLOUDFLARE"
+
+            # Check if job is expired or closed
+            page_content = page.content().lower()
+            page_title = page.title().lower()
+            if any(k in page_content or k in page_title for k in [
+                "this job is no longer active",
+                "this vacancy is closed",
+                "job is closed",
+                "this job is closed",
+                "page not found",
+                "404 not found",
+            ]):
+                print(f"🚫 Listing is expired or closed: {url}")
+                page.close()
+                return False, "EXPIRED"
+
+            # Validate Live Compensation from DOM
+            try:
+                page_text = page.locator("body").inner_text()
+                parsed = parse_live_salary(page_text)
+                if parsed:
+                    max_lpa, raw_sal = parsed
+                    logger.info(f"[Hirist Live] Detected live compensation: '{raw_sal}' (~{max_lpa:.1f} LPA)")
+                    if max_lpa < min_salary_lpa:
+                        print(f"🚫 Live compensation '{raw_sal}' is below target threshold ({min_salary_lpa} LPA). Aborting.")
+                        page.close()
+                        return False, f"FILTERED_OUT: Live salary '{raw_sal}' is below threshold of {min_salary_lpa} LPA"
+            except Exception as e:
+                logger.warning(f"[Hirist Live] Salary check warning: {e}")
+
+            # Check if already applied
+            already_applied = page.locator(
+                "button, a, span, div.btn"
+            ).filter(has_text=re.compile(r"^\s*(applied|already applied)\s*$", re.I))
+            if already_applied.count() > 0 and already_applied.first.is_visible():
+                logger.info(f"[Hirist Live] Already applied to {url}.")
+                print(f"ℹ️ Already applied to Hirist role: {url}")
+                page.close()
+                return True, "ALREADY_APPLIED"
+
+            # Find Apply button
+            apply_btn = None
+            for sel in [
+                "button:has-text('Apply')",
+                "a:has-text('Apply')",
+                "button#apply-btn",
+                "button.apply-button",
+                "div.apply-btn",
+            ]:
+                loc = page.locator(sel).first
+                if loc.count() > 0 and loc.is_visible() and "applied" not in loc.inner_text().strip().lower():
+                    apply_btn = loc
+                    break
+
+            if not apply_btn:
+                logger.warning(f"[Hirist Live] Could not find Apply button on {url}.")
+                page.close()
+                return False, "NO_APPLY_BUTTON"
+
+            print(f"🖱️ Clicking Apply button on Hirist ({url})...")
+            apply_btn.click()
+            page.wait_for_timeout(2500)
+
+            # Check if note to recruiter / cover letter modal appeared
+            textareas = page.locator("textarea#note, textarea[name*='note'], textarea[placeholder*='message'], textarea").all()
+            if textareas:
+                print(f"✍️ Injecting tailored pitch note into Hirist recruiter note...")
+                for ta in textareas:
+                    try:
+                        if ta.is_visible() and ta.is_enabled():
+                            ta.fill(pitch_note, timeout=3000)
+                            page.wait_for_timeout(500)
+                    except Exception as e:
+                        logger.warning(f"[Hirist Live] Textarea fill warning: {e}")
+
+            # Upload resume if file input is present
+            if resume_path and resume_path.exists():
+                file_inputs = page.locator("input[type='file']").all()
+                for fi in file_inputs:
+                    try:
+                        print(f"📎 Attaching resume PDF: {resume_path.name}")
+                        fi.set_input_files(str(resume_path.resolve()))
+                        page.wait_for_timeout(1000)
+                    except Exception as e:
+                        logger.warning(f"[Hirist Live] Resume upload skipped: {e}")
+
+            # Look for confirm / send button in modal
+            confirm_btn = None
+            for sub_sel in [
+                "button:has-text('Send')",
+                "button:has-text('Submit')",
+                "button:has-text('Confirm')",
+                "button:has-text('Apply')",
+                "button[type='submit']",
+            ]:
+                loc = page.locator(sub_sel).first
+                if loc.count() > 0 and loc.is_visible():
+                    confirm_btn = loc
+                    break
+
+            if confirm_btn:
+                print("🚀 Submitting Hirist application...")
+                confirm_btn.click()
+                page.wait_for_timeout(3500)
+
+            page.wait_for_timeout(1500)
+            print(f"🎉 Successfully submitted live application to Hirist: {url}!")
+            page.close()
+            return True, "APPLIED"
+
+        except Exception as e:
+            logger.error(f"[Hirist Live] Error during application: {e}")
+            print(f"❌ Error during Hirist application: {e}")
+            page.close()
+            return False, f"ERROR: {e}"
+
+    def apply_workatastartup(
+        self,
+        url: str,
+        pitch_note: str,
+        resume_path: Optional[Path] = None,
+        min_salary_lpa: float = 10.0,
+    ) -> Tuple[bool, str]:
+        """
+        Executes live application on Work at a Startup (workatastartup.com - Y Combinator):
+        1. Navigates to job URL
+        2. Checks Cloudflare
+        3. Scrapes and validates live compensation from DOM
+        4. Verifies if already applied (.company-action with text 'Applied')
+        5. Clicks 'Apply' button (.company-action or button:has-text('Apply'))
+        6. Injects custom founder note into modal textarea
+        7. Attaches resume if file upload input appears
+        8. Submits application to founders
+        """
+        context = self.start()
+        page = context.new_page()
+        try:
+            logger.info(f"[WAAS Live] Navigating to {url}...")
+            print(f"🌐 Navigating to Work at a Startup: {url}...")
+            page.goto(url, wait_until="domcontentloaded", timeout=30000)
+            page.wait_for_timeout(2500)
+
+            # Check Cloudflare
+            if self.check_cloudflare_challenge(page, "workatastartup", url):
+                page.close()
+                return False, "CLOUDFLARE"
+
+            # Check if job is expired or closed
+            page_content = page.content().lower()
+            page_title = page.title().lower()
+            if any(k in page_content or k in page_title for k in [
+                "this job is no longer active",
+                "no longer accepting applications",
+                "job is closed",
+                "this job is closed",
+                "page not found",
+                "404 not found",
+            ]):
+                print(f"🚫 Listing is expired or closed: {url}")
+                page.close()
+                return False, "EXPIRED"
+
+            # Validate Live Compensation from DOM
+            try:
+                page_text = page.locator("body").inner_text()
+                parsed = parse_live_salary(page_text)
+                if parsed:
+                    max_lpa, raw_sal = parsed
+                    logger.info(f"[WAAS Live] Detected live compensation: '{raw_sal}' (~{max_lpa:.1f} LPA)")
+                    if max_lpa < min_salary_lpa:
+                        print(f"🚫 Live compensation '{raw_sal}' is below target threshold ({min_salary_lpa} LPA). Aborting.")
+                        page.close()
+                        return False, f"FILTERED_OUT: Live salary '{raw_sal}' is below threshold of {min_salary_lpa} LPA"
+            except Exception as e:
+                logger.warning(f"[WAAS Live] Salary check warning: {e}")
+
+            # Check if already applied
+            already_applied = page.locator(
+                ".company-action, a, button"
+            ).filter(has_text=re.compile(r"^\s*applied\s*$", re.I))
+            if already_applied.count() > 0 and already_applied.first.is_visible():
+                logger.info(f"[WAAS Live] Already applied to {url}.")
+                print(f"ℹ️ Already applied to Work at a Startup role: {url}")
+                page.close()
+                return True, "ALREADY_APPLIED"
+
+            # Find Apply button
+            apply_btn = None
+            for sel in [
+                ".company-action:has-text('Apply')",
+                "a:has-text('Apply')",
+                "button:has-text('Apply')",
+                "button:has-text('Apply to')",
+            ]:
+                loc = page.locator(sel).first
+                if loc.count() > 0 and loc.is_visible() and "applied" not in loc.inner_text().strip().lower():
+                    apply_btn = loc
+                    break
+
+            if not apply_btn:
+                logger.warning(f"[WAAS Live] Could not find Apply button on {url}.")
+                page.close()
+                return False, "NO_APPLY_BUTTON"
+
+            print(f"🖱️ Clicking Apply button on Work at a Startup ({url})...")
+            apply_btn.click()
+            page.wait_for_timeout(2500)
+
+            # In YC modal: Injects tailored founder pitch note into textarea
+            textareas = page.locator("textarea[placeholder*='founder'], textarea[name*='note'], textarea").all()
+            if textareas:
+                print(f"✍️ Injecting tailored pitch note into YC founder message...")
+                for ta in textareas:
+                    try:
+                        if ta.is_visible() and ta.is_enabled():
+                            ta.fill(pitch_note, timeout=3000)
+                            page.wait_for_timeout(500)
+                    except Exception as e:
+                        logger.warning(f"[WAAS Live] Textarea fill warning: {e}")
+
+            # Upload resume if file input is present
+            if resume_path and resume_path.exists():
+                file_inputs = page.locator("input[type='file']").all()
+                for fi in file_inputs:
+                    try:
+                        print(f"📎 Attaching resume PDF: {resume_path.name}")
+                        fi.set_input_files(str(resume_path.resolve()))
+                        page.wait_for_timeout(1000)
+                    except Exception as e:
+                        logger.warning(f"[WAAS Live] Resume upload skipped: {e}")
+
+            # Locate and click submit button in YC modal
+            submit_btn = None
+            for sub_sel in [
+                "button:has-text('Send application')",
+                "button:has-text('Submit application')",
+                "button:has-text('Send')",
+                "button:has-text('Submit')",
+                "button:has-text('Apply')",
+            ]:
+                loc = page.locator(sub_sel).first
+                if loc.count() > 0 and loc.is_visible():
+                    submit_btn = loc
+                    break
+
+            if submit_btn:
+                print("🚀 Submitting Work at a Startup application to founders...")
+                submit_btn.click()
+                page.wait_for_timeout(4000)
+
+            print(f"🎉 Successfully submitted live application to Work at a Startup: {url}!")
+            page.close()
+            return True, "APPLIED"
+
+        except Exception as e:
+            logger.error(f"[WAAS Live] Error during application: {e}")
+            print(f"❌ Error during Work at a Startup application: {e}")
             page.close()
             return False, f"ERROR: {e}"

@@ -55,3 +55,7 @@ Desktop.ini
 .idea/
 *.sublime-project
 *.sublime-workspace
+
+# Reports and application state
+reports/
+state/
