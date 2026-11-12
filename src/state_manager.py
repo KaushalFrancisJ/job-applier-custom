@@ -92,8 +92,26 @@ class StateManager:
         raw = f"{platform}:{title.strip().lower()}:{company.strip().lower()}:{url.strip()}"
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
 
-    def is_known(self, job_id: str) -> bool:
-        return job_id in self.jobs
+    def is_known(self, job_id: str, url: str = "") -> bool:
+        if job_id in self.jobs:
+            return True
+        if url:
+            clean_url = url.split("?")[0].rstrip("/").lower()
+            for j in self.jobs.values():
+                j_url = j.get("url", "").split("?")[0].rstrip("/").lower()
+                if j_url and j_url == clean_url:
+                    return True
+        return False
+
+    def is_url_known(self, url: str) -> bool:
+        if not url:
+            return False
+        clean_url = url.split("?")[0].rstrip("/").lower()
+        for j in self.jobs.values():
+            j_url = j.get("url", "").split("?")[0].rstrip("/").lower()
+            if j_url and j_url == clean_url:
+                return True
+        return False
 
     def record_job(self, record: JobRecord):
         self.jobs[record.job_id] = asdict(record)

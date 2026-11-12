@@ -14,15 +14,22 @@ logger = logging.getLogger("discovery")
 
 
 class JobDiscoveryEngine:
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, state_mgr=None):
         self.config = config
         self.prefs = config.get("preferences", {})
+        self.state_mgr = state_mgr
+        watcher_cfg = config.get("watcher", {})
+        disc_cfg = watcher_cfg.get("discovery", {})
+        self.target_unexplored = disc_cfg.get("target_unexplored_per_platform", 12)
+        self.max_pages = disc_cfg.get("max_pages_per_platform", 4)
 
-    def fetch_live_job_opportunities(self, driver=None) -> List[RawJob]:
+    def fetch_live_job_opportunities(self, driver=None, state_mgr=None) -> List[RawJob]:
         """
-        Discovers active opportunities across target platforms.
-        Combines known startup listings, portal job cards, and dynamic portal feeds.
+        Discovers active opportunities across target platforms using Option B:
+        Target Unexplored Quota with Max Page Ceiling.
         """
+        if state_mgr:
+            self.state_mgr = state_mgr
         jobs: List[RawJob] = []
 
         # High-probability curated active listings for Kaushal's exact profile:
@@ -406,7 +413,7 @@ class JobDiscoveryEngine:
 
         # Dynamically discover newly posted jobs from live portals if driver is active
         if driver:
-            live_discovered = self._discover_from_live_portals(driver)
+            live_discovered = self._discover_from_live_portals(driver, state_mgr=self.state_mgr)
             seed_jobs.extend(live_discovered)
 
         # Also dynamically load any external discovery feed if present
@@ -447,88 +454,251 @@ class JobDiscoveryEngine:
 
         return jobs
 
-    def _discover_from_live_portals(self, driver) -> List[dict]:
+    def _discover_from_live_portals(self, driver, state_mgr=None) -> List[dict]:
         """
-        Dynamically discovers live matching job cards from authenticated portals (Hirist, WAAS)
-        using the shared PlaywrightDriver.
+        Dynamically discovers live matching job cards from authenticated portals (Hirist, WAAS, Instahyre)
+        using Option B: Target Unexplored Quota with Max Page Ceiling.
         """
         extra_jobs = []
         if not driver:
             return extra_jobs
 
+        target_quota = self.target_unexplored
+        max_pages = self.max_pages
+
+        def is_known_job(job_id: str, url: str) -> bool:
+            if not state_mgr:
+                return False
+            return state_mgr.is_known(job_id, url=url)
+
         try:
             context = driver.start()
             page = context.new_page()
 
-            # 1. Dynamic Hirist Jobfeed Discovery
+            # ----------------------------------------------------
+            # 1. Dynamic Hirist Discovery (Option B Quota Pagination)
+            # ----------------------------------------------------
             try:
-                page.goto("https://www.hirist.tech/jobfeed", wait_until="domcontentloaded", timeout=20000)
-                page.wait_for_timeout(2500)
-                for a in page.locator("a[href*='/j/']").all():
-                    href = a.get_attribute("href")
-                    text = a.inner_text().strip()
-                    if not href or not text or len(text) < 15:
-                        continue
-                    full_url = href if href.startswith("http") else f"https://www.hirist.tech{href}"
-                    clean_url = full_url.split("?")[0]
-                    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
-                    title_company = lines[0] if lines else "Software Engineer"
-                    if " - " in title_company:
-                        parts = title_company.split(" - ", 1)
-                        company = parts[0].strip()
-                        title = parts[1].strip()
-                    else:
-                        company = "Hirist Recruiter"
-                        title = title_company
+                unexplored_hirist = []
+                seen_urls_hirist = set()
+                known_count_hirist = 0
 
-                    salary = "Competitive"
-                    location = "Bangalore"
-                    for ln in lines[1:]:
-                        if any(tok in ln.lower() for tok in ["lpa", "lacs", "lac", "₹"]):
-                            salary = ln
-                        if any(loc in ln.lower() for loc in ["bangalore", "remote", "chennai", "hyderabad", "pune", "delhi", "mumbai"]):
-                            location = ln
+                for page_idx in range(1, max_pages + 1):
+                    hirist_url = "https://www.hirist.tech/jobfeed" if page_idx == 1 else f"https://www.hirist.tech/jobfeed?page={page_idx}"
+                    try:
+                        page.goto(hirist_url, wait_until="domcontentloaded", timeout=25000)
+                        page.wait_for_timeout(2500)
+                        # Trigger any lazy loading via scroll
+                        page.evaluate("window.scrollTo(0, document.body.scrollHeight / 2)")
+                        page.wait_for_timeout(1000)
+                    except Exception as nav_e:
+                        logger.warning(f"[Discovery] Hirist navigation warning on page {page_idx}: {nav_e}")
+                        break
 
-                    extra_jobs.append({
-                        "platform": "hirist",
-                        "title": title,
-                        "company": company,
-                        "location": location,
-                        "salary": salary,
-                        "description": f"{title} at {company}. Skills: {', '.join(lines[1:])}",
-                        "url": clean_url,
-                        "is_easy_apply": True,
-                        "external_url": None,
-                        "has_custom_screening": False,
-                    })
+                    cards = page.locator("a[href*='/j/']").all()
+                    if not cards:
+                        break
+
+                    for a in cards:
+                        try:
+                            href = a.get_attribute("href")
+                            text = a.inner_text().strip()
+                            if not href or not text or len(text) < 15:
+                                continue
+                            full_url = href if href.startswith("http") else f"https://www.hirist.tech{href}"
+                            clean_url = full_url.split("?")[0]
+                            if clean_url in seen_urls_hirist:
+                                continue
+                            seen_urls_hirist.add(clean_url)
+
+                            lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+                            title_company = lines[0] if lines else "Software Engineer"
+                            if " - " in title_company:
+                                parts = title_company.split(" - ", 1)
+                                company = parts[0].strip()
+                                title = parts[1].strip()
+                            else:
+                                company = "Hirist Recruiter"
+                                title = title_company
+
+                            job_id = hashlib.sha256(f"hirist:{title}:{company}".encode()).hexdigest()[:16]
+
+                            if is_known_job(job_id, clean_url):
+                                known_count_hirist += 1
+                                continue
+
+                            salary = "Competitive"
+                            location = "Bangalore"
+                            for ln in lines[1:]:
+                                if any(tok in ln.lower() for tok in ["lpa", "lacs", "lac", "₹"]):
+                                    salary = ln
+                                if any(loc in ln.lower() for loc in ["bangalore", "remote", "chennai", "hyderabad", "pune", "delhi", "mumbai"]):
+                                    location = ln
+
+                            unexplored_hirist.append({
+                                "platform": "hirist",
+                                "title": title,
+                                "company": company,
+                                "location": location,
+                                "salary": salary,
+                                "description": f"{title} at {company}. Skills: {', '.join(lines[1:])}",
+                                "url": clean_url,
+                                "is_easy_apply": True,
+                                "external_url": None,
+                                "has_custom_screening": False,
+                            })
+                        except Exception:
+                            continue
+
+                    print(f"  📄 [Hirist Page {page_idx}/{max_pages}] {len(unexplored_hirist)} unexplored collected ({known_count_hirist} already seen).")
+
+                    if len(unexplored_hirist) >= target_quota:
+                        print(f"  🎯 [Hirist] Target unexplored quota reached ({len(unexplored_hirist)} >= {target_quota}). Done with Hirist.")
+                        break
+
+                extra_jobs.extend(unexplored_hirist)
             except Exception as e:
                 logger.warning(f"[Discovery] Dynamic Hirist sweep warning: {e}")
 
-            # 2. Dynamic WAAS Discovery
+            # ----------------------------------------------------
+            # 2. Dynamic WAAS Discovery (Option B Quota Pagination)
+            # ----------------------------------------------------
             try:
-                page.goto("https://www.workatastartup.com/companies?role=eng&layout=list-compact", wait_until="domcontentloaded", timeout=20000)
-                page.wait_for_timeout(2500)
-                for a in page.locator("a[href*='/jobs/']").all():
-                    href = a.get_attribute("href")
-                    text = a.inner_text().strip()
-                    if not href or not text or len(text) < 5 or any(r in href for r in ["/r/"]) or text.lower() == "view job":
-                        continue
-                    full_url = href if href.startswith("http") else f"https://www.workatastartup.com{href}"
-                    clean_url = full_url.split("?")[0]
-                    extra_jobs.append({
-                        "platform": "workatastartup",
-                        "title": text,
-                        "company": "YC Startup",
-                        "location": "Remote (India)",
-                        "salary": "Competitive",
-                        "description": f"{text} at Y Combinator Work at a Startup.",
-                        "url": clean_url,
-                        "is_easy_apply": True,
-                        "external_url": None,
-                        "has_custom_screening": False,
-                    })
+                unexplored_waas = []
+                seen_urls_waas = set()
+                known_count_waas = 0
+
+                waas_urls = [
+                    "https://www.workatastartup.com/companies?role=eng&layout=list-compact",
+                    "https://www.workatastartup.com/companies?role=eng&demographic=any&has_remote=true&layout=list-compact"
+                ]
+
+                for step_idx in range(1, max_pages + 1):
+                    waas_target = waas_urls[0] if step_idx == 1 else (waas_urls[1] if step_idx == 2 else waas_urls[0])
+                    try:
+                        if step_idx <= len(waas_urls):
+                            page.goto(waas_target, wait_until="domcontentloaded", timeout=25000)
+                            page.wait_for_timeout(2500)
+                        # Scroll down to load more items on compact view
+                        for _ in range(step_idx):
+                            page.evaluate("window.scrollBy(0, 3000)")
+                            page.wait_for_timeout(1500)
+                    except Exception as nav_e:
+                        logger.warning(f"[Discovery] WAAS navigation warning on step {step_idx}: {nav_e}")
+                        break
+
+                    cards = page.locator("a[href*='/jobs/']").all()
+                    if not cards:
+                        break
+
+                    for a in cards:
+                        try:
+                            href = a.get_attribute("href")
+                            text = a.inner_text().strip()
+                            if not href or not text or len(text) < 5 or any(r in href for r in ["/r/"]) or text.lower() == "view job":
+                                continue
+                            full_url = href if href.startswith("http") else f"https://www.workatastartup.com{href}"
+                            clean_url = full_url.split("?")[0]
+                            if clean_url in seen_urls_waas:
+                                continue
+                            seen_urls_waas.add(clean_url)
+
+                            job_id = hashlib.sha256(f"workatastartup:{text}:YC Startup".encode()).hexdigest()[:16]
+                            if is_known_job(job_id, clean_url):
+                                known_count_waas += 1
+                                continue
+
+                            unexplored_waas.append({
+                                "platform": "workatastartup",
+                                "title": text,
+                                "company": "YC Startup",
+                                "location": "Remote (India)",
+                                "salary": "Competitive",
+                                "description": f"{text} at Y Combinator Work at a Startup.",
+                                "url": clean_url,
+                                "is_easy_apply": True,
+                                "external_url": None,
+                                "has_custom_screening": False,
+                            })
+                        except Exception:
+                            continue
+
+                    print(f"  📄 [WAAS Step {step_idx}/{max_pages}] {len(unexplored_waas)} unexplored collected ({known_count_waas} already seen).")
+
+                    if len(unexplored_waas) >= target_quota:
+                        print(f"  🎯 [WAAS] Target unexplored quota reached ({len(unexplored_waas)} >= {target_quota}). Done with WAAS.")
+                        break
+
+                extra_jobs.extend(unexplored_waas)
             except Exception as e:
                 logger.warning(f"[Discovery] Dynamic WAAS sweep warning: {e}")
+
+            # ----------------------------------------------------
+            # 3. Dynamic Instahyre Discovery (Option B Quota Pagination)
+            # ----------------------------------------------------
+            try:
+                unexplored_instahyre = []
+                seen_urls_instahyre = set()
+                known_count_instahyre = 0
+
+                for page_idx in range(1, max_pages + 1):
+                    insta_url = "https://www.instahyre.com/candidate/opportunities/?matching=true" if page_idx == 1 else f"https://www.instahyre.com/candidate/opportunities/?matching=true&page={page_idx}"
+                    try:
+                        page.goto(insta_url, wait_until="domcontentloaded", timeout=25000)
+                        page.wait_for_timeout(2500)
+                    except Exception as nav_e:
+                        logger.warning(f"[Discovery] Instahyre navigation warning on page {page_idx}: {nav_e}")
+                        break
+
+                    cards = page.locator("a[href*='/job-']").all()
+                    if not cards:
+                        break
+
+                    for a in cards:
+                        try:
+                            href = a.get_attribute("href")
+                            text = a.inner_text().strip()
+                            if not href or not text or len(text) < 5:
+                                continue
+                            full_url = href if href.startswith("http") else f"https://www.instahyre.com{href}"
+                            clean_url = full_url.split("?")[0]
+                            if clean_url in seen_urls_instahyre:
+                                continue
+                            seen_urls_instahyre.add(clean_url)
+
+                            lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+                            title = lines[0] if lines else "AI / Software Engineer"
+                            company = lines[1] if len(lines) > 1 else "Startup"
+
+                            job_id = hashlib.sha256(f"instahyre:{title}:{company}".encode()).hexdigest()[:16]
+                            if is_known_job(job_id, clean_url):
+                                known_count_instahyre += 1
+                                continue
+
+                            unexplored_instahyre.append({
+                                "platform": "instahyre",
+                                "title": title,
+                                "company": company,
+                                "location": "Bangalore / Remote (India)",
+                                "salary": "Competitive",
+                                "description": f"{title} at {company} on Instahyre. Skills: {', '.join(lines[2:]) if len(lines) > 2 else title}",
+                                "url": clean_url,
+                                "is_easy_apply": True,
+                                "external_url": None,
+                                "has_custom_screening": False,
+                            })
+                        except Exception:
+                            continue
+
+                    print(f"  📄 [Instahyre Page {page_idx}/{max_pages}] {len(unexplored_instahyre)} unexplored collected ({known_count_instahyre} already seen).")
+
+                    if len(unexplored_instahyre) >= target_quota:
+                        print(f"  🎯 [Instahyre] Target unexplored quota reached ({len(unexplored_instahyre)} >= {target_quota}). Done with Instahyre.")
+                        break
+
+                extra_jobs.extend(unexplored_instahyre)
+            except Exception as e:
+                logger.warning(f"[Discovery] Dynamic Instahyre sweep warning: {e}")
 
             page.close()
         except Exception as e:

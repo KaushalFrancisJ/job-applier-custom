@@ -77,7 +77,7 @@ class JobApplierEngine:
         """
         print(f"\n[{datetime.now().strftime('%H:%M:%S')}] 🔍 Starting job discovery sweep (Platform: {target_platform})...")
         driver_for_discovery = None if self.dry_run else self.driver
-        discovered = self.discovery.fetch_live_job_opportunities(driver=driver_for_discovery)
+        discovered = self.discovery.fetch_live_job_opportunities(driver=driver_for_discovery, state_mgr=self.state_mgr)
 
         if target_platform and target_platform.lower() != "all":
             discovered = [j for j in discovered if j.platform.lower() == target_platform.lower()]
@@ -109,7 +109,7 @@ class JobApplierEngine:
 
         for raw_job in discovered:
             job_id = raw_job.job_id
-            if self.state_mgr.is_known(job_id):
+            if self.state_mgr.is_known(job_id, url=raw_job.url):
                 sweep_stats["skipped_known"] += 1
                 continue
 

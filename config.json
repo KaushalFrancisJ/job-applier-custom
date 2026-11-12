@@ -90,6 +90,10 @@
     "interval_minutes": 30,
     "jitter_minutes": 5,
     "max_daily_applications_per_platform": 25,
+    "discovery": {
+      "target_unexplored_per_platform": 12,
+      "max_pages_per_platform": 4
+    },
     "platforms_enabled": ["wellfound", "workatastartup", "instahyre", "cutshort", "hirist", "linkedin", "naukri"],
     "priority_platform": "wellfound"
   },
