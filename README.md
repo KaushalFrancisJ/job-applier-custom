@@ -13,7 +13,7 @@ The automation uses a dedicated, persistent Google Chrome profile (`browser_prof
 # Double-click open_browser.bat, OR run:
 .\open_browser.bat
 ```
-* Chrome will open with tabs for **Wellfound**, **Instahyre**, **Cutshort**, **LinkedIn**, and **Naukri**.
+* Chrome will open with tabs for **Wellfound**, **Work at a Startup (YC)**, **Instahyre**, **Cutshort**, **Hirist**, **LinkedIn**, and **Naukri**.
 * Log in once using your account (or Google OAuth).
 * Once logged in, close the browser window. Your session cookies remain securely stored in `browser_profile/` for the automated runner.
 
@@ -38,7 +38,7 @@ python -u run.py --watch
 | :--- | :--- | :--- |
 | **Single Sweep** | `python -u run.py --once` | Discovers, matches, and applies to new jobs right now, then exits. |
 | **Dry-Run (Test)** | `python run.py --dry-run` | Simulates discovery, scoring, and pitch generation without submitting. |
-| **Target One Portal** | `python run.py --once --platform cutshort` | Limits application sweep to a specific portal (`cutshort`, `instahyre`, `wellfound`). |
+| **Target One Portal** | `python run.py --once --platform hirist` | Limits application sweep to a specific portal (`wellfound`, `workatastartup`, `instahyre`, `cutshort`, `hirist`). |
 
 ---
 
@@ -88,17 +88,21 @@ The engine does not blindly crawl the web, nor does it simply refresh a static p
 7. Jittered Sleep      ──► (Sleeps 25–35 mins with randomized anti-bot timing during 09:00–19:00 IST)
 ```
 
-### Stage 1: Targeted Discovery (Not Blind Crawling)
+### Stage 1: Targeted Discovery & Adaptive Pagination (Option B)
 * Instead of spidering millions of unindexed pages, the engine taps directly into your **authenticated candidate queues**:
-  * **Cutshort:** `https://cutshort.io/profile/all-jobs?matchesfor=...` (accesses your personal queue of matching startup roles).
+  * **Hirist:** `https://www.hirist.tech/jobfeed` (accesses live curated tech feed and recruiter posts).
+  * **Work at a Startup (YC):** `https://www.workatastartup.com/companies?role=eng&layout=list-compact` (accesses high-pedigree Y Combinator startups).
   * **Instahyre:** `https://www.instahyre.com/candidate/opportunities/?matching=true` (accesses your personal InstaMatch opportunities).
   * **Wellfound:** `https://wellfound.com/jobs` (accesses high-equity early-stage startup roles).
-* Every listing originates from genuine portal endpoints—no dummy or fabricated job IDs.
+  * **Cutshort:** `https://cutshort.io/profile/all-jobs?matchesfor=...` (accesses matching startup roles).
+* **Independent Per-Portal Unexplored Quotas:**
+  * Every portal maintains its **own independent goal** (`target_unexplored_per_platform = 12`). Reaching the goal on Hirist never stops exploration on WAAS or Instahyre.
+  * When top listings on page 1 are already processed, the engine dynamically paginates deeper (`?page=2`, `?page=3`, or infinite scroll passes) until its target unexplored quota is satisfied or its safety ceiling (`max_pages_per_platform = 4`) is reached.
 
-### Stage 2: Instant State Deduplication
+### Stage 2: Dual-Key State Deduplication
 * Before opening browser tabs or loading heavy pages, the engine computes a deterministic hash:
   $$\text{job\_id} = \text{SHA256}(\text{platform} + \text{title} + \text{company})[:16]$$
-* If `job_id` exists in `state/applications.json`, it is skipped in `0.001s` (`skipped_known += 1`). You will never double-apply or waste actions on previously seen roles.
+* **URL & ID Matching:** Checks both `job_id` and normalized URL against `state/applications.json` in `0.001s` (`skipped_known += 1`). You will never double-apply or waste actions on previously seen roles across any portal.
 
 ### Stage 3: Strict Guardrails & Matcher Scoring
 The matcher ([`src/matcher.py`](src/matcher.py)) evaluates the role substance beyond surface titles:
@@ -116,9 +120,12 @@ The engine customizes every outbound message using your verified GitHub projects
 ### Stage 5: Live Browser Automation & Modal Interaction
 For matched, unapplied jobs, Playwright executes live interactions using your persistent Chrome profile:
 1. **Live DOM Compensation Check:** Scrapes the live header text from the rendered DOM. If salary was misrepresented in search feeds, it aborts immediately.
-2. **Modal Automation:**
+2. **Modal & Form Automation:**
+   * **On Hirist:** Navigates directly to the role, clicks *Apply*, verifies live compensation header, injects tailored pitch into the recruiter note modal, attaches `Kaushal_Francis_J_res.pdf`, and submits.
+   * **On Work at a Startup (YC):** Detects `.company-action:has-text('Apply')`, opens the YC application modal, injects personalized founder pitch note highlighting agentic systems and MCP, and delivers directly to YC founders.
    * **On Cutshort:** Clicks *Apply to this job* / *Apply now*, detects the modal addressed to the specific recruiter (e.g. *"To Akshay Patil"*), injects your tailored pitch into the message box, links `Kaushal_Francis_J_res.pdf`, and clicks *Send*.
-   * **On Instahyre:** Clicks *View job »*, opens the full opportunity modal, clicks *Apply*, and dismisses post-apply dialogs.
+   * **On Instahyre:** Opens the full opportunity modal, clicks *Apply*, and dismisses post-apply dialogs (safeguarded against false-positive tab substring matches).
+   * **On Wellfound:** Directly submits with custom pitch and candidate profile.
 3. **Unified Driver Lifecycle:** All platforms share one persistent browser context managed by `JobApplierEngine`, preventing browser-locking or Playwright event-loop collisions.
 
 ### Stage 6: Anti-Bot Randomized Jitter
@@ -154,8 +161,10 @@ job-applier-custom/
     ├── state_manager.py                 # State persistence & O(1) deduplication
     └── platforms/                       # Platform-specific automation modules
         ├── wellfound.py                 # Wellfound (Priority 1)
-        ├── instahyre.py                 # Instahyre (Priority 2, Google OAuth)
-        ├── cutshort.py                  # Cutshort (Priority 3, Google OAuth)
+        ├── workatastartup.py            # Work at a Startup / Y Combinator (Priority 2)
+        ├── instahyre.py                 # Instahyre (Priority 3, Google OAuth)
+        ├── cutshort.py                  # Cutshort (Priority 4, Google OAuth)
+        ├── hirist.py                    # Hirist (Priority 5, 1-Click with pitch)
         ├── linkedin.py                  # LinkedIn Easy Apply
         └── naukri.py                    # Naukri Quick Apply
 ```
@@ -166,6 +175,8 @@ job-applier-custom/
 
 Key settings you can customize:
 * `"preferences"."expected_ctc_lpa"`: Minimum cash salary floor (default: `10.0`).
+* `"watcher"."discovery"."target_unexplored_per_platform"`: Number of fresh unexplored jobs to gather per portal per sweep (default: `12`).
+* `"watcher"."discovery"."max_pages_per_platform"`: Safety ceiling for pagination / scroll cycles (default: `4`).
 * `"watcher"."active_hours"`: Operating hours (default: `{"start": "09:00", "end": "19:00"}`).
 * `"watcher"."interval_minutes"`: Frequency of checks (default: `30` min).
 * `"watcher"."jitter_minutes"`: Anti-bot random offset (default: `5` min).

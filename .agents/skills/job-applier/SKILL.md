@@ -25,9 +25,9 @@ This skill provides the end-to-end runbook for automating job applications acros
 * **Base Markdown CV:** `cv.md`
 
 ### Key Projects for Pitch Tailoring
-1. **[NVIDIA NIM Desktop Coding Agent](https://github.com/KaushalFrancisJ/Coding-agent-nvidia):** Python, Flet, AsyncOpenAI, Model Context Protocol (MCP), LLM streaming JSON buffers.
-2. **[RAG Pipeline with Custom LLM Evaluation](https://github.com/KaushalFrancisJ/Research-RAG-Chatbot):** Python, Groq API, FAISS, Sentence Transformers, Streamlit.
-3. **[HabitFlow API](https://github.com/KaushalFrancisJ/Habit-Formation-Application):** Node.js, TypeScript, Express.js, MySQL, Redis streak caching, Docker, Zod.
+1. **[NVIDIA NIM Desktop Coding Agent](https://github.com/KaushalFrancisJ/Coding-agent-nvidia):** Python, Flet, AsyncOpenAI, Model Context Protocol (MCP), LLM streaming JSON buffers. Packaged Windows binary release: [Release v0.0.0](https://github.com/KaushalFrancisJ/Coding-agent-nvidia/releases/tag/v0.0.0).
+2. **[RAG Pipeline with Custom LLM Evaluation](https://github.com/KaushalFrancisJ/Research-RAG-Chatbot):** Python, Groq API, FAISS, Sentence Transformers. Live deployment: [Streamlit App](https://kaushalfrancisj-research-rag-chatbot-frontendapp-5az4zw.streamlit.app/).
+3. **[HabitFlow Production API](https://github.com/KaushalFrancisJ/Habit-Formation-Application):** Node.js, TypeScript, Express.js, MySQL, Redis streak caching, Docker, Zod. Live frontend: [Netlify App](https://habitflow-ap.netlify.app).
 4. **Payday Suite Enterprise Experience:** 40% RAG chatbot accuracy improvement with AWS Bedrock Titan embeddings, PgVector indexing, dynamic DB form engine.
 
 ---
@@ -83,6 +83,14 @@ This skill provides the end-to-end runbook for automating job applications acros
      - Verify live applications via the `Applied today` green badge in the `Applied jobs` tab.
    * **Shared Playwright Driver Lifecycle:**
      - Never initialize multiple concurrent `sync_playwright().start()` instances in the same thread (causes `Sync API inside asyncio loop` errors and user-data-dir locking). All platforms must share the single `PlaywrightDriver` created by `JobApplierEngine`.
+7. **Independent Per-Portal Unexplored Quota & Pagination Ceiling (Option B):**
+   * **Independent Counters:** Each platform manages its own independent goal (`target_unexplored_per_platform = 12`). Reaching the goal on Hirist never curtails or skips exploration on WAAS or Instahyre.
+   * **Dynamic Deep Discovery:** When page 1 contains already-processed jobs (`skipped_known`), the crawler dynamically advances:
+     - **Hirist:** Navigates to `?page=2`, `?page=3` and scrolls for lazy-loaded cards.
+     - **Work at a Startup (WAAS):** Progressively scrolls compact views and executes remote filter passes.
+     - **Instahyre:** Navigates opportunity pages (`?page=2`).
+   * **Safety Ceiling:** Each platform has a hard ceiling (`max_pages_per_platform = 4`) to prevent infinite scraping while ensuring fresh jobs are always uncovered.
+   * **Dual-Key Deduplication:** Checks both canonical SHA256 hashes and normalized URLs against `state/applications.json` in real time before and during scraping.
 
 ---
 
@@ -132,7 +140,9 @@ open_browser.bat
 * `state/applications.json`: JSON database of all discovered, applied, and filtered jobs (prevents duplicates).
 * `reports/daily_report_YYYY-MM-DD.md`: Live markdown audit report.
 * `src/candidate_profile.py`: Loads `cv.md` and `Kaushal_Francis_J_res.pdf`.
+* `src/discovery.py`: Real-time discovery engine across Wellfound, WAAS, Instahyre, Cutshort, and Hirist using Option B unexplored quota pagination.
 * `src/matcher.py`: Pure ML filtering, salary verification, and pitch note synthesis.
+* `src/platforms/`: Platform automation handlers (`wellfound.py`, `workatastartup.py`, `instahyre.py`, `cutshort.py`, `hirist.py`, `linkedin.py`, `naukri.py`).
 * `src/browser_driver.py`: Playwright driver controlling `browser_profile/` for live applications and Cloudflare detection.
 * `src/notifier.py`: Dispatches email alerts (to self) and Windows desktop audible alerts for Cloudflare challenges.
 
