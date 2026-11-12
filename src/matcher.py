@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import re
 from typing import Dict, List, Optional, Tuple
 
+from src.agy_bridge import AgyBridge
 from src.candidate_profile import CandidateProfile
 
 
@@ -44,6 +45,7 @@ class JobMatcher:
             r.lower() for r in self.prefs.get("exclude_roles", [])
         ]
         self.min_salary_lpa = float(self.prefs.get("expected_ctc_lpa", 10.0))
+        self.agy = AgyBridge(effort="low")
 
     def evaluate_job(
         self,
@@ -149,9 +151,19 @@ class JobMatcher:
 
         has_target_title = any(tr in title_lower for tr in self.target_roles) or any(p in title_lower for p in ["ai", "fullstack", "full stack", "full-stack", "backend", "python", "software engineer", "developer", "sde"])
 
+        is_explicit_ai = any(kw in title_lower for kw in [
+            "ai engineer", "generative ai", "genai", "ai full stack", "ai fullstack",
+            "ai platform", "founding ai", "llm engineer", "ai developer", "applied ai"
+        ])
+        is_core_eng = any(kw in title_lower for kw in [
+            "founding engineer", "full stack", "fullstack", "backend engineer", "software engineer", "sde"
+        ])
+
         # Scoring based on JD substance
         score = 45.0
-        if has_target_title:
+        if is_explicit_ai:
+            score += 30.0
+        elif is_core_eng or has_target_title:
             score += 20.0
         elif any(ai_term in desc_lower for ai_term in ["agent", "llm", "conversational", "generative"]):
             score += 15.0  # Applied AI startup with cross-functional title
@@ -159,8 +171,9 @@ class JobMatcher:
         tech_score = len(genai_hits) * 3.5 + len(fullstack_hits) * 2.0
         score += min(tech_score, 30.0)
 
-        # Minimum relevance threshold: must demonstrate genuine Applied AI or Fullstack/Backend relevance
-        if score < 65.0 or (len(genai_hits) == 0 and len(fullstack_hits) < 2):
+        # Minimum relevance threshold:
+        # If title is explicitly an AI role or Core Engineering role, a score >= 65 is an automatic match even if the card snippet was short
+        if score < 65.0 or (not is_explicit_ai and not is_core_eng and len(genai_hits) == 0 and len(fullstack_hits) < 2):
             return MatchResult(
                 is_match=False,
                 score=score,
