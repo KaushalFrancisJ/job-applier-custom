@@ -107,7 +107,7 @@ class JobMatcher:
 
         if has_india_mention:
             loc_matched = True
-        elif self.allow_remote_india and ("remote (india)" in loc_lower or "india / remote" in loc_lower or "india (remote)" in loc_lower):
+        elif self.allow_remote_india and any(rem in loc_lower for rem in ["remote", "work from home", "wfh"]) and not has_disallowed:
             loc_matched = True
         elif not self.strict_india_only and any(rem in loc_lower for rem in ["remote", "wfh", "work from home"]):
             loc_matched = True

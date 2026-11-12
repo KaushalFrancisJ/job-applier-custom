@@ -270,7 +270,91 @@ class JobDiscoveryEngine:
                 "external_url": None,
                 "has_custom_screening": False,
             },
+            {
+                "platform": "wellfound",
+                "title": "Junior Applied AI Engineer (Agents & Integrations)",
+                "company": "red6.ai",
+                "location": "Remote (India)",
+                "salary": "₹2L – ₹15L",
+                "description": "Building agent systems, tool connectors, durable queues, Model Context Protocol (MCP) integrations, structured outputs, and evaluation tests.",
+                "url": "https://wellfound.com/jobs/4597637-junior-applied-ai-engineer-agents-integrations",
+                "is_easy_apply": True,
+                "external_url": None,
+                "has_custom_screening": False,
+            },
+            {
+                "platform": "instahyre",
+                "title": "AI Engineer",
+                "company": "GeoIQ",
+                "location": "Bangalore",
+                "salary": "₹12L – ₹18L",
+                "description": "1–2 years experience building enterprise RAG pipelines, embedding optimization, vector search with FAISS/PgVector, and containerized Docker deployment.",
+                "url": "https://www.instahyre.com/job-423218-ai-engineer-at-geoiq-bangalore",
+                "is_easy_apply": True,
+                "external_url": None,
+                "has_custom_screening": False,
+            },
+            {
+                "platform": "instahyre",
+                "title": "AI Engineer (Copilot / Intelligent Systems)",
+                "company": "Bicycle AI",
+                "location": "Remote (Work from Home)",
+                "salary": "₹12L – ₹18L",
+                "description": "1–3 years experience in LLM copilot workflows, multi-model evaluation (Claude, LLaMA, Gemini), prompt engineering, and cloud microservices deployment.",
+                "url": "https://www.instahyre.com/job-376753-ai-engineer-at-bicycle-ai-work-from-home",
+                "is_easy_apply": True,
+                "external_url": None,
+                "has_custom_screening": False,
+            },
+            {
+                "platform": "wellfound",
+                "title": "Software Engineer / AI Engineer (Agent Systems)",
+                "company": "JuiceLabs AI",
+                "location": "Bangalore (HSR Layout)",
+                "salary": "₹15L – ₹25L",
+                "description": "Designing agent harnesses, subagent orchestration, autonomous tool-calling loops, and evaluation harnesses for developer AI systems.",
+                "url": "https://wellfound.com/jobs/4879023-software-engineer-ai-engineer",
+                "is_easy_apply": True,
+                "external_url": None,
+                "has_custom_screening": False,
+            },
+            {
+                "platform": "instahyre",
+                "title": "AI Engineer (RAG & Enterprise LLM)",
+                "company": "Goldcast",
+                "location": "Bangalore",
+                "salary": "₹16L – ₹24L",
+                "description": "High-growth scaleup building enterprise GenAI, RAG systems with vector retrieval, LLM latency optimization, and Python backend microservices.",
+                "url": "https://www.instahyre.com/job-445919-ai-engineer-at-goldcast-bangalore",
+                "is_easy_apply": True,
+                "external_url": None,
+                "has_custom_screening": False,
+            },
+            {
+                "platform": "instahyre",
+                "title": "AI / LLM Engineer",
+                "company": "Kaleidofin",
+                "location": "Chennai / Bangalore",
+                "salary": "₹10L – ₹16L",
+                "description": "Fintech AI/LLM engineering: LLM pipelines, prompt tuning, vector search, async Python backends, and agentic workflows.",
+                "url": "https://www.instahyre.com/job-431875-ai-llm-engineer-at-kaleidofin-bangalore-chennai",
+                "is_easy_apply": True,
+                "external_url": None,
+                "has_custom_screening": False,
+            },
         ]
+
+        # Also dynamically load any external discovery feed if present
+        from pathlib import Path
+        feed_file = Path("discovery_feed.json")
+        if feed_file.exists():
+            try:
+                with open(feed_file, "r", encoding="utf-8") as f:
+                    extra = json.load(f)
+                    if isinstance(extra, list):
+                        seed_jobs.extend(extra)
+            except Exception as e:
+                logger.warning(f"Error loading discovery_feed.json: {e}")
 
         for s in seed_jobs:
             job_id = hashlib.sha256(f"{s['platform']}:{s['title']}:{s['company']}".encode()).hexdigest()[:16]
