@@ -26,6 +26,7 @@ class JobRecord:
     pitch_note: str = ""
     action_notes: str = ""
     match_score: float = 0.0
+    external_url: str = ""
 
 
 class StateManager:
@@ -101,7 +102,8 @@ class StateManager:
             clean_url = url.split("?")[0].rstrip("/").lower()
             for j in self.jobs.values():
                 j_url = j.get("url", "").split("?")[0].rstrip("/").lower()
-                if j_url and j_url == clean_url:
+                ext_url = j.get("external_url", "").split("?")[0].rstrip("/").lower()
+                if clean_url in (j_url, ext_url) and clean_url:
                     return True
         return False
 
@@ -111,7 +113,8 @@ class StateManager:
         clean_url = url.split("?")[0].rstrip("/").lower()
         for j in self.jobs.values():
             j_url = j.get("url", "").split("?")[0].rstrip("/").lower()
-            if j_url and j_url == clean_url:
+            ext_url = j.get("external_url", "").split("?")[0].rstrip("/").lower()
+            if clean_url in (j_url, ext_url) and clean_url:
                 return True
         return False
 
