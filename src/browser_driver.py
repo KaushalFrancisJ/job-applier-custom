@@ -1011,7 +1011,6 @@ class PlaywrightDriver:
                 "button:has-text('Send')",
                 "button:has-text('Submit')",
                 "button:has-text('Confirm')",
-                "button:has-text('Apply')",
                 "button[type='submit']",
             ]:
                 loc = page.locator(sub_sel).first
@@ -1024,10 +1023,34 @@ class PlaywrightDriver:
                 confirm_btn.click()
                 page.wait_for_timeout(3500)
 
-            page.wait_for_timeout(1500)
-            print(f"🎉 Successfully submitted live application to Hirist: {url}!")
-            page.close()
-            return True, "APPLIED"
+            # Check if redirected to a screening questionnaire (e.g. /screening?)
+            if "/screening" in page.url or page.locator("text='Submit a Form', text='Mandatory Question'").count() > 0:
+                logger.info(f"[Hirist Live] Mandatory screening questionnaire detected for {url}.")
+                print(f"⚠️ Mandatory screening questions required for: {url}")
+                page.close()
+                return False, "ACTION_REQUIRED: Mandatory screening questionnaire detected"
+
+            # Strict verification of successful application
+            page.wait_for_timeout(2000)
+            page_text = page.locator("body").inner_text().lower()
+            current_url = page.url.lower()
+
+            is_confirmed = (
+                "/job/applied" in current_url
+                or "application has been submitted successfully" in page_text
+                or "application sent" in page_text
+                or page.locator("button, a, span, div.btn").filter(has_text=re.compile(r"^\s*(applied|already applied)\s*$", re.I)).count() > 0
+            )
+
+            if is_confirmed:
+                print(f"🎉 Successfully verified live application to Hirist: {url}!")
+                page.close()
+                return True, "APPLIED"
+            else:
+                logger.warning(f"[Hirist Live] Application not confirmed on {url}. Final URL: {page.url}")
+                print(f"⚠️ Hirist application could not be confirmed for: {url}")
+                page.close()
+                return False, "SUBMISSION_UNCONFIRMED"
 
         except Exception as e:
             logger.error(f"[Hirist Live] Error during application: {e}")
