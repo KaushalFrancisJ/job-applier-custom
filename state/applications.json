@@ -3213,10 +3213,10 @@
     "salary": "Competitive",
     "url": "https://www.linkedin.com/jobs/view/4489552238/",
     "platform": "linkedin",
-    "status": "ACTION_REQUIRED",
-    "applied_at": "2026-11-13T13:46:37.868239",
+    "status": "APPLIED",
+    "applied_at": "2026-11-13T17:39:11.600272",
     "pitch_note": "I engineer high-impact Generative AI systems, recently boosting enterprise RAG accuracy by 40% with AWS Bedrock Titan and PgVector at Payday Suite. I also open-sourced an autonomous desktop coding agent utilizing NVIDIA NIM and Model Context Protocol streaming (github.com/KaushalFrancisJ/Coding-agent-nvidia). I would love to bring this hands-on prompt engineering and scalable LLM orchestration directly to Archer's AI platform in Chennai.",
-    "action_notes": "LinkedIn Smart Shortlist (78% match): Pre-drafted pitch ready. Click link to apply safely.",
+    "action_notes": "Submitted live on LinkedIn by Kaushal with bespoke tailored pitch.",
     "match_score": 78.5
   },
   "d03286f92a96d5c6": {
@@ -3297,10 +3297,10 @@
     "salary": "Competitive",
     "url": "https://www.linkedin.com/jobs/view/4490308677/",
     "platform": "linkedin",
-    "status": "ACTION_REQUIRED",
-    "applied_at": "2026-11-13T14:48:36.878342",
+    "status": "APPLIED",
+    "applied_at": "2026-11-13T17:39:11.600292",
     "pitch_note": "I recently boosted enterprise RAG accuracy by 40% using AWS Bedrock and PgVector, and engineered an open-source MCP desktop coding agent with async streaming ('github.com/KaushalFrancisJ/Coding-agent-nvidia'). At People Impact, I want to channel this experience to build production-grade, context-aware conversational AI that transforms workforce and HR interactions. I would love to bring these high-impact systems to your Chennai team.",
-    "action_notes": "LinkedIn Smart Shortlist (78% match): Pre-drafted pitch ready. Click link to apply safely.",
+    "action_notes": "Submitted live on LinkedIn by Kaushal with bespoke tailored pitch.",
     "match_score": 78.5
   }
 }
