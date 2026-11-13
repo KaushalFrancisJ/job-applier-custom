@@ -3171,11 +3171,12 @@
     "salary": "Competitive",
     "url": "https://www.linkedin.com/jobs/view/4490549352/",
     "platform": "linkedin",
-    "status": "ACTION_REQUIRED",
-    "applied_at": "2026-11-13T13:46:09.476155",
+    "status": "APPLIED",
+    "applied_at": "2026-11-13T17:57:59.841983",
     "pitch_note": "At Payday Suite, I improved enterprise RAG accuracy by 40% using AWS Bedrock and PgVector, and engineered an open-source Desktop Coding Agent integrating NVIDIA NIM with Model Context Protocol (MCP) for async streaming. I'd love to bring this hands-on platform architecture experience to scale LetzBizz's AI infrastructure in Chennai. Let's connect!",
-    "action_notes": "LinkedIn Smart Shortlist (75% match): Pre-drafted pitch ready. Click link to apply safely.",
-    "match_score": 75.0
+    "action_notes": "Submitted live on Hirist screening form with custom architectural answers and 2 weeks notice period.",
+    "match_score": 75.0,
+    "external_url": "https://www.hirist.tech/j/senior-software-development-engineer-ai-platform-engineering-1680136"
   },
   "3a7cf973036690a3": {
     "job_id": "3a7cf973036690a3",
