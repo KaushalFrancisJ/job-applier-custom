@@ -890,9 +890,9 @@ window.INITIAL_APPLICATIONS_DATA = {
     "url": "https://www.hirist.tech/j/conversational-ai-designer-engineer-prompt-engineering-1678926",
     "platform": "hirist",
     "status": "APPLIED",
-    "applied_at": "2026-11-12T15:49:32.955206",
+    "applied_at": "2026-11-13T22:10:06.690090",
     "pitch_note": "Hi team, I'm excited about the Prompt Engineering opportunity. As a Senior Associate at 4i apps, I own fullstack feature delivery across Next.js, Node.js/FastAPI, and event-driven AWS infrastructure, alongside production GenAI workflows with PgVector and AWS Bedrock. Check out my production habit engine API with Redis caching and Docker at github.com/KaushalFrancisJ/Habit-Formation-Application. Looking forward to speaking!",
-    "action_notes": "Submitted live via browser with customized pitch and resume.",
+    "action_notes": "Submitted live on Hirist (screening questionnaire completed with Current CTC: 4.75 LPA, Expected: 11 LPA, Notice: 1 Month).",
     "match_score": 70.5
   },
   "32b94028c9e3941d": {
@@ -1478,9 +1478,9 @@ window.INITIAL_APPLICATIONS_DATA = {
     "url": "https://www.hirist.tech/j/ai-ml-engineer-1677493",
     "platform": "hirist",
     "status": "APPLIED",
-    "applied_at": "2026-11-12T15:51:28.922518",
+    "applied_at": "2026-11-13T22:10:06.690090",
     "pitch_note": "Hi team, I'm reaching out regarding the AI/ML Engineer role. I specialize in building production agentic systems and scalable backends. Recently, I architected an asynchronous desktop coding assistant powered by NVIDIA NIM APIs and the Model Context Protocol (MCP) with streaming JSON handling (github.com/KaushalFrancisJ/Coding-agent-nvidia). Backed by fullstack engineering in Python/FastAPI, TypeScript, and AWS Lambda/SQS, I am confident I can contribute immediately.",
-    "action_notes": "Submitted live via browser with customized pitch and resume.",
+    "action_notes": "Submitted live on Hirist (screening questionnaire completed with CTC: 4.75 / 11 LPA, Chennai location, F2F in Hyderabad: Yes, Notice: 1 Month).",
     "match_score": 70.5
   },
   "0b8540994d05be0b": {
@@ -1842,9 +1842,9 @@ window.INITIAL_APPLICATIONS_DATA = {
     "url": "https://www.hirist.tech/j/forward-deployed-applied-ai-engineer-generative-ai-1675992",
     "platform": "hirist",
     "status": "APPLIED",
-    "applied_at": "2026-11-12T16:18:45.109723",
+    "applied_at": "2026-11-13T22:10:06.690090",
     "pitch_note": "Hi team, I'm reaching out regarding the Generative AI role. I specialize in building production agentic systems and scalable backends. Recently, I architected an asynchronous desktop coding assistant powered by NVIDIA NIM APIs and the Model Context Protocol (MCP) with streaming JSON handling (github.com/KaushalFrancisJ/Coding-agent-nvidia). Backed by fullstack engineering in Python/FastAPI, TypeScript, and AWS Lambda/SQS, I am confident I can contribute immediately.",
-    "action_notes": "Submitted live via browser with customized pitch and resume.",
+    "action_notes": "Submitted live on Hirist (screening questionnaire completed with 2 yrs Python, 1.5 yrs GenAI/RAG, Notice: 1 Month, CTC: 4.75 LPA).",
     "match_score": 70.5
   },
   "901ad64d4ee5835f": {
