@@ -191,6 +191,11 @@ class JobApplierEngine:
                 sweep_stats["applied"] += 1
                 action_notes = "Submitted live via browser with customized pitch and resume."
                 print(f"  ✅ Auto-Applied [{raw_job.platform.capitalize()}]: {raw_job.company} - {raw_job.title} ({eval_res.score:.0f}% match)")
+            elif "QUOTA_EXHAUSTED" in status_reason or "RATE_LIMITED" in status_reason:
+                status = "QUOTA_EXHAUSTED"
+                sweep_stats["action_required"] += 1
+                action_notes = "Platform weekly quota reached (5/5). Queued for next weekly quota reset."
+                print(f"  ⏸️ Quota Exhausted [{raw_job.platform.capitalize()}]: {status_reason}")
             elif "INELIGIBLE" in status_reason:
                 status = "FILTERED_OUT"
                 sweep_stats["filtered_out"] += 1

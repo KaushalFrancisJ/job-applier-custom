@@ -1127,6 +1127,22 @@ class PlaywrightDriver:
             apply_btn.click()
             page.wait_for_timeout(2500)
 
+            # Check if YC weekly application quota (5 applications/week) is already reached
+            page_text = page.locator("body").inner_text().lower()
+            if "limit of 5 applications" in page_text or "reached your limit" in page_text:
+                print("⚠️ Work at a Startup weekly limit reached (5/5 applications used).")
+                page.close()
+                return False, "QUOTA_EXHAUSTED: You have reached the limit of 5 applications per week on Work at a Startup."
+
+            # Automatically select common required qualification questions (e.g. CS degree requirement)
+            try:
+                for yes_label in page.locator("label:has-text('Yes')").all():
+                    if yes_label.is_visible():
+                        yes_label.click()
+                        page.wait_for_timeout(400)
+            except Exception as e:
+                logger.warning(f"[WAAS Live] Qualification radio select note: {e}")
+
             # In YC modal: Injects tailored founder pitch note into textarea
             textareas = page.locator("textarea[placeholder*='founder'], textarea[name*='note'], textarea").all()
             if textareas:
@@ -1150,24 +1166,53 @@ class PlaywrightDriver:
                     except Exception as e:
                         logger.warning(f"[WAAS Live] Resume upload skipped: {e}")
 
-            # Locate and click submit button in YC modal
+            # Check dialog specifically for weekly limit or disabled state
+            dialog = page.locator("[role='dialog'], .waas-apply-v3, .modal").first
+            if dialog.count() > 0 and dialog.is_visible():
+                dialog_text = dialog.inner_text().lower()
+                if "limit of 5 applications" in dialog_text or "reached your limit" in dialog_text:
+                    print("⚠️ Work at a Startup weekly limit (5/5) displayed in modal.")
+                    page.close()
+                    return False, "QUOTA_EXHAUSTED: Limit of 5 applications per week reached on Work at a Startup."
+
+            # Locate and click submit button strictly inside YC modal
             submit_btn = None
+            search_scope = dialog if (dialog.count() > 0 and dialog.is_visible()) else page
             for sub_sel in [
                 "button:has-text('Send application')",
                 "button:has-text('Submit application')",
                 "button:has-text('Send')",
                 "button:has-text('Submit')",
-                "button:has-text('Apply')",
             ]:
-                loc = page.locator(sub_sel).first
+                loc = search_scope.locator(sub_sel).first
                 if loc.count() > 0 and loc.is_visible():
                     submit_btn = loc
                     break
 
             if submit_btn:
+                if not submit_btn.is_enabled():
+                    err_hint = dialog.inner_text() if (dialog.count() > 0 and dialog.is_visible()) else "Button disabled"
+                    print(f"⚠️ Submit button is disabled in YC modal: {err_hint[:100]}")
+                    page.close()
+                    return False, f"SUBMISSION_BLOCKED: Submit button disabled ({err_hint[:80]})"
+
                 print("🚀 Submitting Work at a Startup application to founders...")
                 submit_btn.click()
                 page.wait_for_timeout(4000)
+
+                # Post-submission check for YC weekly limit toast or errors
+                post_text = page.locator("body").inner_text().lower()
+                if "limit of 5 applications" in post_text or "reached your limit" in post_text:
+                    print("⚠️ YC rejected submission: Weekly limit of 5 applications reached.")
+                    page.close()
+                    return False, "QUOTA_EXHAUSTED: Limit of 5 applications per week reached."
+
+                if dialog.count() > 0 and dialog.is_visible():
+                    diag_err = dialog.inner_text()
+                    if any(err in diag_err.lower() for err in ["error", "limit", "failed", "required"]):
+                        print(f"⚠️ YC modal displayed error: {diag_err[:100]}")
+                        page.close()
+                        return False, f"SUBMISSION_BLOCKED: {diag_err[:100]}"
 
             print(f"🎉 Successfully submitted live application to Work at a Startup: {url}!")
             page.close()
