@@ -141,6 +141,7 @@ open_browser.bat
 * `reports/daily_report_YYYY-MM-DD.md`: Live markdown audit report.
 * `src/candidate_profile.py`: Loads `cv.md` and `Kaushal_Francis_J_res.pdf`.
 * `src/discovery.py`: Real-time discovery engine across Wellfound, WAAS, Instahyre, Cutshort, and Hirist using Option B unexplored quota pagination.
+* `src/quota_manager.py`: Rolling weekly application limit tracker (e.g. YC WAAS 5 apps/week), active cooldown calculator, and priority recovery queue manager.
 * `src/matcher.py`: Pure ML filtering, salary verification, and pitch note synthesis.
 * `src/platforms/`: Platform automation handlers (`wellfound.py`, `workatastartup.py`, `instahyre.py`, `cutshort.py`, `hirist.py`, `linkedin.py`, `naukri.py`).
 * `src/browser_driver.py`: Playwright driver controlling `browser_profile/` for live applications and Cloudflare detection.
@@ -155,3 +156,11 @@ open_browser.bat
    * **If JD highlights RAG / Vector DBs:** Cite 40% RAG accuracy gain with AWS Bedrock Titan + PgVector + Groq LLM evaluation.
    * **If JD highlights Agents / Python / Tool-calling:** Cite NVIDIA NIM Desktop Coding Agent with MCP integration.
    * **If JD highlights Fullstack / Backend / APIs:** Cite Next.js + FastAPI + HabitFlow Redis architecture.
+
+---
+
+## ⏸️ Platform Quota Management & Cooldown Recovery
+
+1. **Hard Rate Limit Enforcement:** Work at a Startup strictly enforces **5 applications per rolling 7 days**. The driver confirms dialog closure and confirmation indicators before recording any application as `APPLIED`.
+2. **Deterministic Cooldown Tracking:** `PlatformQuotaManager` calculates active applications within the rolling 7-day window. When 5/5 slots are occupied, remaining WAAS listings are marked as `QUOTA_EXHAUSTED` and scheduled for recovery.
+3. **Automated Priority Recovery:** When the rolling window unlocks a slot (oldest application timestamp + 7 days), the watcher recovers queued roles in priority order (`match_score` descending) and submits them live automatically.

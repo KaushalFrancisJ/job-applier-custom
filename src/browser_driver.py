@@ -1200,19 +1200,60 @@ class PlaywrightDriver:
                 submit_btn.click()
                 page.wait_for_timeout(4000)
 
-                # Post-submission check for YC weekly limit toast or errors
-                post_text = page.locator("body").inner_text().lower()
-                if "limit of 5 applications" in post_text or "reached your limit" in post_text:
+                # Post-submission check for YC weekly limit toast or errors across entire page
+                body_text = page.locator("body").inner_text().lower()
+                if any(q in body_text for q in [
+                    "limit of 5 applications",
+                    "reached your limit",
+                    "5 applications per week",
+                    "applications per week",
+                ]):
                     print("⚠️ YC rejected submission: Weekly limit of 5 applications reached.")
                     page.close()
-                    return False, "QUOTA_EXHAUSTED: Limit of 5 applications per week reached."
+                    return False, "QUOTA_EXHAUSTED: Limit of 5 applications per week reached on Work at a Startup."
 
+                # Crucial Verification: Did the modal dialog dismiss/close?
+                # On Work at a Startup, a successful application ALWAYS closes the modal.
+                # If the modal is still open, submission did NOT succeed.
                 if dialog.count() > 0 and dialog.is_visible():
-                    diag_err = dialog.inner_text()
-                    if any(err in diag_err.lower() for err in ["error", "limit", "failed", "required"]):
-                        print(f"⚠️ YC modal displayed error: {diag_err[:100]}")
+                    modal_text = dialog.inner_text().lower()
+                    if any(q in modal_text for q in ["limit", "quota", "week"]):
+                        print("⚠️ YC modal shows weekly limit reached.")
                         page.close()
-                        return False, f"SUBMISSION_BLOCKED: {diag_err[:100]}"
+                        return False, "QUOTA_EXHAUSTED: Limit of 5 applications per week reached on Work at a Startup."
+                    elif any(err in modal_text for err in ["error", "failed", "required"]):
+                        print(f"⚠️ YC modal shows validation/submission error: {modal_text[:120]}")
+                        page.close()
+                        return False, f"SUBMISSION_BLOCKED: {modal_text[:120]}"
+                    else:
+                        print("⚠️ YC modal remained open after clicking Send (submission not accepted by platform).")
+                        page.close()
+                        return False, "QUOTA_EXHAUSTED: Modal remained open after Send (YC weekly limit or submission rejected)."
+
+                # Check if Apply button on the job listing page changed to 'Applied'
+                applied_btn = page.locator(".company-action, a, button").filter(has_text=re.compile(r"^\s*applied\s*$", re.I))
+                if applied_btn.count() > 0:
+                    logger.info(f"[WAAS Live] Confirmed applied indicator for {url}.")
+                    print(f"🎉 Confirmed live submission via 'Applied' status on {url}!")
+                    page.close()
+                    return True, "APPLIED"
+
+                # Check if a toast notification appeared
+                toasts = page.locator(".toast, [role='alert'], .alert, .notification, #flash-messages").all()
+                for toast in toasts:
+                    try:
+                        if toast.is_visible():
+                            t_text = toast.inner_text().lower()
+                            if any(q in t_text for q in ["limit", "5 applications", "week"]):
+                                print(f"⚠️ YC toast shows weekly limit: {t_text}")
+                                page.close()
+                                return False, "QUOTA_EXHAUSTED: Limit of 5 applications per week reached."
+                            elif "error" in t_text or "failed" in t_text:
+                                print(f"⚠️ YC toast error: {t_text}")
+                                page.close()
+                                return False, f"SUBMISSION_ERROR: {t_text}"
+                    except Exception:
+                        pass
 
             print(f"🎉 Successfully submitted live application to Work at a Startup: {url}!")
             page.close()

@@ -130,7 +130,12 @@ For matched, unapplied jobs, Playwright executes live interactions using your pe
    * **On Wellfound:** Directly submits with custom pitch and candidate profile.
 3. **Unified Driver Lifecycle:** All platforms share one persistent browser context managed by `JobApplierEngine`, preventing browser-locking or Playwright event-loop collisions.
 
-### Stage 6: Anti-Bot Randomized Jitter
+### Stage 6: Platform Quota Tracking & Cooldown Recovery (e.g. YC 5/week)
+* **Weekly Limit Safeguard:** Work at a Startup (Y Combinator) enforces a hard limit of **5 applications per rolling 7 days**. The driver verifies live modal dismissal and confirmation toasts so that rejected submissions are never falsely recorded as `APPLIED`.
+* **Zero-Waste Circuit Breaker:** When 5 active applications are present in the rolling 7-day window, `PlatformQuotaManager` marks remaining WAAS roles as `QUOTA_EXHAUSTED` with their exact cooldown unlock timestamp, avoiding wasted browser navigations.
+* **Automatic Priority Recovery:** High-matching queued roles (sorted by match score, e.g. 75% AI roles first) are preserved in `state/applications.json`. The moment a rolling slot unlocks (e.g. on `2026-11-19 15:05 IST`), the engine automatically recovers the highest-ranking role from the queue and submits it live.
+
+### Stage 7: Anti-Bot Randomized Jitter
 * Anti-scraping systems flag repetitive, fixed-interval bots. The watcher calculates sleep duration dynamically:
   $$\text{Sleep Time} = \text{Interval (30 min)} \pm \text{Random Jitter (5 min)}$$
 * Each cycle waits between **25 and 35 minutes**, perfectly mimicking natural human browsing behavior.

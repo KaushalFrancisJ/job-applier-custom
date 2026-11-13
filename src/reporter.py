@@ -24,6 +24,7 @@ class ReportGenerator:
         applied = [j for j in today_jobs if j.get("status") == "APPLIED"]
         action_req = [j for j in today_jobs if j.get("status") == "ACTION_REQUIRED"]
         skipped = [j for j in today_jobs if j.get("status") == "FILTERED_OUT"]
+        quota_queue = [j for j in all_jobs if j.get("status") == "QUOTA_EXHAUSTED"]
 
         lines = [
             f"# 🚀 Job Application & Watcher Report — {today_str}",
@@ -35,8 +36,9 @@ class ReportGenerator:
             "",
             "| Metric | Count | Notes |",
             "| :--- | :---: | :--- |",
-            f"| **Total Processed Today** | **{len(today_jobs)}** | Jobs discovered across Wellfound, Instahyre, Cutshort, LinkedIn & Naukri |",
+            f"| **Total Processed Today** | **{len(today_jobs)}** | Jobs discovered across Wellfound, Instahyre, Cutshort, Hirist, LinkedIn & Naukri |",
             f"| ✅ **Auto-Applied** | **{len(applied)}** | Successfully submitted with custom pitch |",
+            f"| ⏸️ **Quota Queue (Cooldown)** | **{len(quota_queue)}** | Queued for auto-apply upon weekly quota slot unlock |",
             f"| ⚠️ **Action Required** | **{len(action_req)}** | Needs your manual submission or external test |",
             f"| 🚫 **Filtered Out** | **{len(skipped)}** | Pure ML excluded / salary < 10 LPA / mismatch |",
             "",
@@ -73,6 +75,26 @@ class ReportGenerator:
                 lines.append(
                     f"| **{j.get('platform', 'Wellfound').capitalize()}** | **{j.get('company')}** | [{j.get('title')}]({j.get('url')}) | {j.get('location')} | {j.get('match_score', 85):.0f}% | *\"{pitch_preview}\"* |"
                 )
+            lines.append("")
+
+        # Platform Quota Cooldown & Recovery Queue Section
+        lines.append("## ⏸️ Platform Quota Cooldown & Recovery Queue")
+        lines.append("These high-matching jobs were queued because a platform's weekly limit (e.g. YC Work at a Startup 5 apps/week) was reached. They will be auto-applied in priority order the moment rolling quota slots unlock.")
+        lines.append("")
+        if not quota_queue:
+            lines.append("_No platform quotas currently active. All platforms ready._\n")
+        else:
+            # Sort by match score descending
+            sorted_quota = sorted(quota_queue, key=lambda x: x.get("match_score", 0), reverse=True)
+            lines.append("| Priority | Platform | Company | Role | Match Score | Status / Unlock Note |")
+            lines.append("| :---: | :---: | :--- | :--- | :---: | :--- |")
+            for idx, j in enumerate(sorted_quota, 1):
+                p_name = j.get("platform", "").capitalize()
+                c_name = j.get("company", "YC Startup")
+                t_link = f"[{j.get('title')}]({j.get('url')})" if j.get("url") else j.get("title")
+                score = f"{j.get('match_score', 0):.0f}%"
+                note = j.get("action_notes", "Queued for weekly quota reset")
+                lines.append(f"| #{idx} | **{p_name}** | {c_name} | {t_link} | {score} | {note} |")
             lines.append("")
 
         # Filtered / Excluded Section

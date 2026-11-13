@@ -2840,5 +2840,47 @@
     "pitch_note": "At Payday Suite, I improved enterprise RAG accuracy by 40% using AWS Bedrock and PgVector while scaling mission-critical workflows. I also architected an open-source Desktop Coding Agent leveraging the Model Context Protocol (github.com/KaushalFrancisJ/Coding-agent-nvidia) with async streaming. I\u2019d love to bring this enterprise-grade backend rigor and fullstack velocity to strengthen your foundational infrastructure.",
     "action_notes": "Requires manual action: ERROR: Locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"button:has-text('Send')\").first\n    - locator resolved to <button disabled type=\"button\" class=\"company-action inline-flex min-h-8 items-center justify-center rounded-full border px-5 py-2 text-[12px] font-medium tracking-[0.02em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/40 focus-visible:ring-offset-2 gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black/40 border-transparent bg-[var(--waas-surface-muted,#E3E8EE)] text-[color:var(--waas-text-body,#777777)\u2026>Send</button>\n  - attempting click action\n    2 \u00d7 waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n    - waiting 20ms\n    2 \u00d7 waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n      - waiting 100ms\n    56 \u00d7 waiting for element to be visible, enabled and stable\n       - element is not enabled\n     - retrying click action\n       - waiting 500ms\n",
     "match_score": 65.0
+  },
+  "3831dc3a9553392f": {
+    "job_id": "3831dc3a9553392f",
+    "title": "Construction Evaluation Engineer - Part-Time",
+    "company": "YC Startup",
+    "location": "Remote (India)",
+    "salary": "Competitive",
+    "url": "https://www.workatastartup.com/jobs/108061",
+    "platform": "workatastartup",
+    "status": "FILTERED_OUT",
+    "applied_at": "2026-11-13T11:22:15.607484",
+    "pitch_note": "",
+    "action_notes": "Low relevance score (45.0/100). JD does not sufficiently align with Applied AI/Fullstack/Backend.",
+    "match_score": 45.0
+  },
+  "40f70c0ef952d05e": {
+    "job_id": "40f70c0ef952d05e",
+    "title": "Software Engineer Senior",
+    "company": "YC Startup",
+    "location": "Remote (India)",
+    "salary": "Competitive",
+    "url": "https://www.workatastartup.com/jobs/99220",
+    "platform": "workatastartup",
+    "status": "QUOTA_EXHAUSTED",
+    "applied_at": "2026-11-13T11:22:31.813055",
+    "pitch_note": "At Payday Suite, I improved enterprise RAG accuracy by 40% with AWS Bedrock Titan and PgVector, mastering high-leverage production AI backend delivery. I also built and open-sourced an NVIDIA NIM Desktop Coding Agent utilizing Model Context Protocol (MCP) and async streaming (`github.com/KaushalFrancisJ/Coding-agent-nvidia`). I\u2019m excited to bring this pragmatic systems and AI engineering velocity directly to scaling your core product.",
+    "action_notes": "Platform weekly quota reached (5/5). Queued for next weekly quota reset.",
+    "match_score": 65.0
+  },
+  "f86c29af4946eb76": {
+    "job_id": "f86c29af4946eb76",
+    "title": "Full Stack Developer - Java/Python",
+    "company": "Gruner Renewable",
+    "location": "Bangalore",
+    "salary": "Competitive",
+    "url": "https://www.hirist.tech/j/gruner-renewable-full-stack-developer-java-python-1680718",
+    "platform": "hirist",
+    "status": "APPLIED",
+    "applied_at": "2026-11-13T11:22:56.742216",
+    "pitch_note": "At Payday Suite, I engineered backend systems and improved enterprise RAG accuracy by 40% using AWS Bedrock and PgVector, alongside architecting production Redis/Docker microservices. I also open-sourced an async streaming MCP agent on GitHub (`KaushalFrancisJ/Coding-agent-nvidia`). I\u2019m excited to bring this production Java/Python backend expertise to scale Gruner Renewable\u2019s clean-energy digital infrastructure in Noida.",
+    "action_notes": "Submitted live via browser with customized pitch and resume.",
+    "match_score": 67.0
   }
 }

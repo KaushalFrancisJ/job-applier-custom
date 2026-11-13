@@ -22,6 +22,7 @@ from src.platforms.wellfound import WellfoundPlatform
 from src.platforms.workatastartup import WorkAtAStartupPlatform
 from src.reporter import ReportGenerator
 from src.state_manager import JobRecord, StateManager
+from src.quota_manager import PlatformQuotaManager
 
 logger = logging.getLogger("engine")
 
@@ -44,6 +45,7 @@ class JobApplierEngine:
         self.profile = load_candidate_profile(self.config, self.cv_path)
         self.matcher = JobMatcher(self.profile, self.config)
         self.state_mgr = StateManager(self.state_path)
+        self.quota_mgr = PlatformQuotaManager(self.state_mgr)
         self.reporter = ReportGenerator(self.reports_dir)
         self.discovery = JobDiscoveryEngine(self.config)
         self.notifier = AlertNotifier(self.config)
@@ -106,6 +108,14 @@ class JobApplierEngine:
             return priority_order.get(job.platform, 99)
 
         discovered.sort(key=platform_priority)
+
+        # Log platform quota status and check for recovery of pending QUOTA_EXHAUSTED roles
+        print(f"  📊 Quota Status: {self.quota_mgr.format_summary('workatastartup')}")
+        waas_status = self.quota_mgr.get_quota_status("workatastartup")
+        if waas_status["available_slots"] > 0 and waas_status["pending_queue_count"] > 0:
+            recovered = self.recover_quota_exhausted_jobs("workatastartup")
+            if recovered > 0:
+                sweep_stats["applied"] += recovered
 
         for raw_job in discovered:
             job_id = raw_job.job_id
@@ -171,6 +181,32 @@ class JobApplierEngine:
                 self.notifier.notify_action_required(
                     raw_job.company, raw_job.title, record.url, eval_res.action_notes, eval_res.score
                 )
+                continue
+
+            # Check if platform has an active weekly quota cap with 0 available slots
+            if not self.quota_mgr.can_apply(raw_job.platform):
+                status = "QUOTA_EXHAUSTED"
+                sweep_stats["action_required"] += 1
+                q_status = self.quota_mgr.get_quota_status(raw_job.platform)
+                next_str = q_status['next_slot_available_at'].strftime('%Y-%m-%d %H:%M:%S IST') if q_status['next_slot_available_at'] else 'rolling cooldown'
+                action_notes = f"Platform weekly quota reached ({q_status['used_slots']}/{q_status['limit']}). Queued in priority retry queue for slot unlock at {next_str}."
+                print(f"  ⏸️ Quota Exhausted [{raw_job.platform.capitalize()}]: 0 slots available. Queued in priority recovery queue.")
+                record = JobRecord(
+                    job_id=job_id,
+                    title=raw_job.title,
+                    company=raw_job.company,
+                    location=raw_job.location,
+                    salary=raw_job.salary,
+                    url=raw_job.url,
+                    platform=raw_job.platform,
+                    status=status,
+                    applied_at=now_str,
+                    pitch_note=eval_res.pitch_note,
+                    action_notes=action_notes,
+                    match_score=eval_res.score,
+                )
+                if not self.dry_run:
+                    self.state_mgr.record_job(record)
                 continue
 
             # Eligible for Direct / 1-Click Auto Apply
@@ -244,3 +280,78 @@ class JobApplierEngine:
             self.driver.close()
 
         return sweep_stats
+
+    def recover_quota_exhausted_jobs(self, platform: str) -> int:
+        """
+        Submits applications for top-priority QUOTA_EXHAUSTED jobs
+        when rolling weekly quota cooldown slots unlock.
+        """
+        status = self.quota_mgr.get_quota_status(platform)
+        avail = status["available_slots"]
+        if avail <= 0:
+            return 0
+
+        pending = self.quota_mgr.get_pending_jobs(platform)
+        if not pending:
+            return 0
+
+        recovered_count = 0
+        print(f"\n🔄 [Quota Recovery] {avail} slot(s) unlocked on {platform.capitalize()}! Processing top priority queued jobs...")
+
+        from src.platforms.base import RawJob
+        for job_dict in pending[:avail]:
+            job_id = job_dict.get("job_id")
+            url = job_dict.get("url")
+            company = job_dict.get("company")
+            title = job_dict.get("title")
+            pitch_note = job_dict.get("pitch_note", "")
+
+            print(f"  🎯 Applying to queued role [{job_dict.get('match_score')}%]: {company} - {title} ({url})...")
+            platform_handler = self.platforms.get(platform)
+            if not platform_handler or self.dry_run:
+                continue
+
+            raw_job = RawJob(
+                platform=platform,
+                job_id=job_id,
+                title=title,
+                company=company,
+                location=job_dict.get("location", ""),
+                salary=job_dict.get("salary", ""),
+                url=url,
+            )
+            res = platform_handler.apply_to_job(
+                raw_job, pitch_note, resume_path=self.profile.resume_pdf_path
+            )
+            success = False
+            reason = ""
+            if isinstance(res, tuple):
+                success, reason = res
+            else:
+                success = bool(res)
+
+            if success:
+                record = JobRecord(
+                    job_id=job_id,
+                    title=title,
+                    company=company,
+                    location=job_dict.get("location", ""),
+                    salary=job_dict.get("salary", ""),
+                    url=url,
+                    platform=platform,
+                    status="APPLIED",
+                    applied_at=datetime.now().isoformat(),
+                    pitch_note=pitch_note,
+                    action_notes="Recovered from quota queue and submitted live upon weekly quota slot unlock.",
+                    match_score=job_dict.get("match_score", 0),
+                )
+                self.state_mgr.record_job(record)
+                recovered_count += 1
+                print(f"  🎉 Successfully applied to queued role: {company} - {title}!")
+            elif "QUOTA_EXHAUSTED" in reason:
+                print(f"  ⏸️ Platform rejected submission; quota remains locked: {reason}")
+                break
+            else:
+                print(f"  ⚠️ Could not submit queued role: {reason}")
+
+        return recovered_count
