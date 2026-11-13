@@ -27,7 +27,13 @@ class CandidateProfile:
     linkedin: str
     github: str
     expected_ctc_lpa: float
-    primary_locations: List[str]
+    current_ctc_lpa: float = 4.75
+    notice_period: str = "1 Month"
+    hometown: str = "Chennai"
+    relocate_flexible: bool = True
+    academics: Dict[str, str] = field(default_factory=dict)
+    experience_years: Dict[str, float] = field(default_factory=dict)
+    primary_locations: List[str] = field(default_factory=list)
     resume_pdf_path: Optional[Path] = None
     projects: List[Project] = field(default_factory=list)
     skills: Dict[str, List[str]] = field(default_factory=dict)
@@ -47,7 +53,24 @@ def load_candidate_profile(config_data: dict, cv_path: Path) -> CandidateProfile
         current_company=cand_info.get("current_company", "Payday Suite - 4i apps solutions"),
         linkedin=cand_info.get("linkedin", "https://linkedin.com/in/kaushalfrancisj"),
         github=cand_info.get("github", "https://github.com/kaushalfrancisj"),
-        expected_ctc_lpa=float(prefs.get("expected_ctc_lpa", 12.0)),
+        expected_ctc_lpa=float(prefs.get("expected_ctc_lpa", 11.0)),
+        current_ctc_lpa=float(cand_info.get("current_ctc_lpa", 4.75)),
+        notice_period=cand_info.get("notice_period", "1 Month"),
+        hometown=cand_info.get("hometown", "Chennai"),
+        relocate_flexible=cand_info.get("relocate_flexible", True),
+        academics=cand_info.get("academics", {
+            "twelfth_percentage": "91.6%",
+            "degree_cgpa": "7.47",
+            "degree": "B.Tech in CSE (Cyber Physical Systems)",
+            "university": "Vellore Institute of Technology, Chennai",
+        }),
+        experience_years=cand_info.get("experience_years", {
+            "python": 2.0,
+            "ai_ml": 2.0,
+            "genai": 1.5,
+            "rag": 1.5,
+            "total": 1.5,
+        }),
         primary_locations=prefs.get("locations", {}).get("primary", ["Chennai", "Bangalore"]),
         resume_pdf_path=(cv_path.parent / cand_info["resume_pdf"]) if cand_info.get("resume_pdf") else None,
     )

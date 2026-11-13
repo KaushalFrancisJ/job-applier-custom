@@ -895,6 +895,9 @@ class PlaywrightDriver:
         pitch_note: str,
         resume_path: Optional[Path] = None,
         min_salary_lpa: float = 10.0,
+        profile: Optional[any] = None,
+        job_title: str = "",
+        job_desc: str = "",
     ) -> Tuple[bool, str]:
         """
         Executes live application on Hirist (hirist.tech):
@@ -1025,10 +1028,14 @@ class PlaywrightDriver:
 
             # Check if redirected to a screening questionnaire (e.g. /screening?)
             if "/screening" in page.url or page.locator("text='Submit a Form', text='Mandatory Question'").count() > 0:
-                logger.info(f"[Hirist Live] Mandatory screening questionnaire detected for {url}.")
-                print(f"⚠️ Mandatory screening questions required for: {url}")
-                page.close()
-                return False, "ACTION_REQUIRED: Mandatory screening questionnaire detected"
+                logger.info(f"[Hirist Live] Mandatory screening questionnaire detected for {url}. Attempting dynamic resolution...")
+                print(f"🤖 Dynamic screening questionnaire detected for {url}. Auto-resolving fields & essays via AgyBridge...")
+                solved = self.solve_hirist_screening(page, profile=profile, job_title=job_title, job_desc=job_desc)
+                if not solved:
+                    logger.warning(f"[Hirist Live] Screening form could not be automatically resolved for {url}.")
+                    print(f"⚠️ Mandatory screening questions could not be auto-resolved for: {url}")
+                    page.close()
+                    return False, "ACTION_REQUIRED: Mandatory screening questionnaire required"
 
             # Strict verification of successful application
             page.wait_for_timeout(2000)
@@ -1057,6 +1064,209 @@ class PlaywrightDriver:
             print(f"❌ Error during Hirist application: {e}")
             page.close()
             return False, f"ERROR: {e}"
+
+    def solve_hirist_screening(
+        self,
+        page,
+        profile: Optional[any] = None,
+        job_title: str = "",
+        job_desc: str = "",
+    ) -> bool:
+        """
+        Dynamically solves Hirist screening questionnaires on the fly:
+        1. Injects candidate parameters (CTC, location, academics, notice period, experience)
+        2. Solves open-ended technical questions via AgyBridge reasoning
+        3. Selects radio/button choices and completes submission
+        """
+        try:
+            from src.agy_bridge import AgyBridge
+            agy = AgyBridge(effort="low")
+        except Exception:
+            agy = None
+
+        # Candidate parameters fallback
+        cur_ctc = "4.75"
+        exp_ctc = "11"
+        notice = "1 Month"
+        loc = "Chennai, Tamil Nadu"
+        academics = "12th Standard: 91.6%, B.Tech in CSE (Cyber Physical Systems, VIT Chennai): 7.47 CGPA (approx 74.7%)."
+
+        if profile:
+            cur_ctc = str(getattr(profile, "current_ctc_lpa", "4.75"))
+            exp_ctc = str(getattr(profile, "expected_ctc_lpa", "11"))
+            notice = getattr(profile, "notice_period", "1 Month")
+            loc = getattr(profile, "location", "Chennai, Tamil Nadu")
+
+        # 1. Handle Textareas (Technical essays / specific questions)
+        textareas = page.locator("textarea").all()
+        for idx, ta in enumerate(textareas):
+            try:
+                if not (ta.is_visible() and ta.is_enabled()):
+                    continue
+
+                q_text = ""
+                parent = ta
+                for _ in range(5):
+                    parent = parent.locator("xpath=..")
+                    txt = parent.inner_text().replace(ta.input_value(), "").strip()
+                    if txt and len(txt) > 5 and len(txt) < 400:
+                        q_text = txt
+                        break
+
+                q_lower = q_text.lower()
+                ans = ""
+
+                if re.search(r"current.*ctc|current.*salary", q_lower):
+                    ans = f"{cur_ctc} LPA"
+                elif re.search(r"expected.*ctc|expected.*salary", q_lower):
+                    ans = f"{exp_ctc} LPA"
+                elif re.search(r"notice.*period", q_lower):
+                    ans = notice
+                elif re.search(r"current.*location|hometown|where.*located", q_lower):
+                    ans = loc
+                elif re.search(r"12th|degree.*percentage|cgpa|academics", q_lower):
+                    ans = academics
+                elif re.search(r"relocate|relocation", q_lower):
+                    ans = "Yes, fully willing and flexible to relocate anywhere in India."
+                else:
+                    # Technical or product question -> Use AgyBridge or rich fallback
+                    if agy:
+                        try:
+                            cand_ctx = (
+                                "Senior Associate at Payday Suite (4i apps solutions), 1.5+ years experience. "
+                                "Built enterprise RAG pipeline with AWS Bedrock Titan & PgVector (+40% accuracy). "
+                                "Open-source NVIDIA NIM Desktop Coding Agent with Model Context Protocol (MCP) streaming. "
+                                "Fullstack Next.js, Node.js, Python FastAPI, MySQL, Redis, Docker, AWS SQS/Lambda."
+                            )
+                            raw_ans = agy.answer_screening_question(q_text, job_desc or job_title, cand_ctx)
+                            if raw_ans and len(raw_ans.strip()) > 10:
+                                ans = raw_ans.strip()[:490]
+                        except Exception as e:
+                            logger.warning(f"[Hirist Screening] AgyBridge failed for question: {e}")
+
+                    if not ans:
+                        if "rag" in q_lower or "hallucination" in q_lower:
+                            ans = (
+                                "At Payday Suite, I architected an enterprise RAG pipeline pairing AWS Bedrock Titan "
+                                "embeddings with PgVector, boosting retrieval accuracy by 40%. I enforce strict metadata-aware "
+                                "indexing, cosine similarity thresholding (>0.78), and automated Groq LLM-as-a-judge evaluation."
+                            )
+                        elif "agent" in q_lower or "mcp" in q_lower or "product" in q_lower or "ai" in q_lower:
+                            ans = (
+                                "Yes. I built an open-source Desktop Coding Agent integrating NVIDIA NIM APIs with "
+                                "the Model Context Protocol (MCP) for async streaming (github.com/KaushalFrancisJ/Coding-agent-nvidia). "
+                                "At Payday Suite, I also delivered production GenAI features and fullstack dynamic form engines."
+                            )
+                        elif "fullstack" in q_lower or "react" in q_lower or "next" in q_lower or "fastapi" in q_lower:
+                            ans = (
+                                "I own fullstack architecture end-to-end using Next.js, TypeScript, Node.js, and Python FastAPI. "
+                                "Experienced with RESTful APIs, AWS SQS/Lambda event pipelines, MySQL schemas, and Redis caching layers."
+                            )
+                        else:
+                            ans = (
+                                "Senior Associate at Payday Suite specializing in Applied Generative AI and scalable backend systems. "
+                                "Proven delivery of production RAG pipelines, open-source MCP agents, and high-performance APIs."
+                            )
+
+                print(f"✍️ Injected answer for screening question #{idx+1} ({len(ans)} chars)")
+                ta.scroll_into_view_if_needed()
+                ta.fill(ans[:495])
+                page.wait_for_timeout(300)
+            except Exception as e:
+                logger.warning(f"[Hirist Screening] Textarea #{idx} fill error: {e}")
+
+        # 2. Handle Visible Inputs (Numbers / Short text)
+        inputs = page.locator("input:visible").all()
+        for idx, inp in enumerate(inputs):
+            try:
+                inp_type = inp.get_attribute("type") or "text"
+                if inp_type in ["hidden", "submit", "button", "radio", "checkbox"]:
+                    continue
+
+                q_text = ""
+                parent = inp
+                for _ in range(4):
+                    parent = parent.locator("xpath=..")
+                    txt = parent.inner_text().replace(inp.input_value(), "").strip()
+                    if txt and len(txt) > 3 and len(txt) < 300:
+                        q_text = txt
+                        break
+
+                q_lower = q_text.lower()
+                val = ""
+
+                if re.search(r"python", q_lower):
+                    val = "2"
+                elif re.search(r"ai/ml|machine learning", q_lower):
+                    val = "2"
+                elif re.search(r"gen ai|llm|rag", q_lower):
+                    val = "1.5"
+                elif re.search(r"current.*ctc|current.*salary", q_lower):
+                    val = cur_ctc
+                elif re.search(r"expected.*ctc|expected.*salary", q_lower):
+                    val = exp_ctc
+                elif re.search(r"experience", q_lower):
+                    val = "1.5"
+
+                if val:
+                    inp.scroll_into_view_if_needed()
+                    inp.fill(val)
+                    page.wait_for_timeout(200)
+            except Exception as e:
+                logger.warning(f"[Hirist Screening] Input #{idx} fill error: {e}")
+
+        # 3. Handle Radio / Button Selections
+        # Notice Period
+        for np_opt in ["1 month", "1 Month", "15 Days or less", "2 Weeks", "Immediately Available"]:
+            loc_np = page.locator("button, div.btn, span, label").filter(has_text=np_opt).first
+            if loc_np.count() > 0 and loc_np.is_visible():
+                loc_np.click()
+                print(f"Selected notice option: '{np_opt}'")
+                page.wait_for_timeout(300)
+                break
+
+        # Relocation / F2F (Click Yes)
+        for yes_sel in page.locator("button, div.btn, span, label").filter(has_text=re.compile(r"^\s*yes\s*$", re.I)).all():
+            if yes_sel.is_visible():
+                yes_sel.click()
+                page.wait_for_timeout(200)
+
+        # "Are you currently living in Bangalore?" -> If Living in Chennai, click No
+        page_body = page.locator("body").inner_text().lower()
+        if "living in bangalore" in page_body or "currently living in" in page_body:
+            no_btn = page.locator("button, div.btn, span, label").filter(has_text=re.compile(r"^\s*no\s*$", re.I)).first
+            if no_btn.count() > 0 and no_btn.is_visible():
+                no_btn.click()
+                page.wait_for_timeout(200)
+
+        # 4. Click Next / Submit
+        page.wait_for_timeout(1000)
+        next_btn = None
+        for n_sel in [
+            "button:has-text('Next')",
+            "input[value='Next']",
+            "button:has-text('Submit')",
+            "button:has-text('Confirm')",
+            "button[type='submit']",
+        ]:
+            loc = page.locator(n_sel).first
+            if loc.count() > 0 and loc.is_visible():
+                next_btn = loc
+                break
+
+        if next_btn:
+            print(f"Submitting screening form via '{next_btn.inner_text().strip()}'...")
+            next_btn.click()
+            page.wait_for_timeout(4500)
+
+        # Verify confirmation
+        current_url = page.url.lower()
+        body_text = page.locator("body").inner_text().lower()
+        if "/job/applied" in current_url or "submitted successfully" in body_text or "application sent" in body_text:
+            print("🎉 Successfully submitted and confirmed screening questionnaire!")
+            return True
+
+        return False
 
     def apply_workatastartup(
         self,

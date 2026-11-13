@@ -14,12 +14,13 @@ logger = logging.getLogger("hirist")
 
 
 class HiristPlatform(BasePlatform):
-    def __init__(self, config: dict, notifier=None, driver: Optional[PlaywrightDriver] = None):
+    def __init__(self, config: dict, notifier=None, driver: Optional[PlaywrightDriver] = None, profile: Optional[any] = None):
         super().__init__(config)
         self.user_data_dir = Path(config.get("browser", {}).get("user_data_dir", "./browser_profile"))
         self.headless = config.get("browser", {}).get("headless", False)
         self.notifier = notifier
         self._driver: Optional[PlaywrightDriver] = driver
+        self.profile = profile
 
     def _get_driver(self) -> PlaywrightDriver:
         if self._driver is None:
@@ -65,6 +66,9 @@ class HiristPlatform(BasePlatform):
                 pitch_note=pitch_note,
                 resume_path=resume_path,
                 min_salary_lpa=min_salary_lpa,
+                profile=self.profile,
+                job_title=job.title,
+                job_desc=job.description,
             )
         except Exception as e:
             logger.error(f"[Hirist Live] Submission error: {e}")

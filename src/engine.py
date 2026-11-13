@@ -63,7 +63,7 @@ class JobApplierEngine:
             "workatastartup": WorkAtAStartupPlatform(self.config, notifier=self.notifier, driver=self.driver),
             "cutshort": CutshortPlatform(self.config, notifier=self.notifier, driver=self.driver),
             "instahyre": InstahyrePlatform(self.config, notifier=self.notifier, driver=self.driver),
-            "hirist": HiristPlatform(self.config, notifier=self.notifier, driver=self.driver),
+            "hirist": HiristPlatform(self.config, notifier=self.notifier, driver=self.driver, profile=self.profile),
             "linkedin": LinkedInPlatform(self.config),
             "naukri": NaukriPlatform(self.config),
         }

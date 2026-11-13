@@ -4,14 +4,32 @@
     "email": "jkfrancis2003@gmail.com",
     "phone": "+91 9342963935",
     "current_location": "Chennai, Tamil Nadu",
+    "hometown": "Chennai",
     "current_role": "Senior Associate",
     "current_company": "Payday Suite - 4i apps solutions",
+    "current_ctc_lpa": 4.75,
+    "expected_ctc_lpa": 11.0,
+    "notice_period": "1 Month",
+    "relocate_flexible": true,
+    "academics": {
+      "twelfth_percentage": "91.6%",
+      "degree_cgpa": "7.47",
+      "degree": "B.Tech in CSE (Cyber Physical Systems)",
+      "university": "Vellore Institute of Technology, Chennai"
+    },
+    "experience_years": {
+      "python": 2,
+      "ai_ml": 2,
+      "genai": 1.5,
+      "rag": 1.5,
+      "total": 1.5
+    },
     "linkedin": "https://linkedin.com/in/kaushalfrancisj",
     "github": "https://github.com/kaushalfrancisj",
     "resume_pdf": "Kaushal_Francis_J_res.pdf"
   },
   "preferences": {
-    "expected_ctc_lpa": 10.0,
+    "expected_ctc_lpa": 11.0,
     "allow_undisclosed_ctc": true,
     "currency": "INR",
     "locations": {
