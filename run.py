@@ -25,8 +25,14 @@ def main():
     parser.add_argument("--once", action="store_true", help="Run a single job sweep and exit")
     parser.add_argument("--dry-run", action="store_true", help="Simulate discovery and matching without submitting")
     parser.add_argument("--platform", type=str, default="all", choices=["all", "wellfound", "workatastartup", "cutshort", "instahyre", "hirist", "linkedin", "naukri"], help="Target portal")
+    parser.add_argument("--dashboard", action="store_true", help="Launch interactive web dashboard")
 
     args = parser.parse_args()
+
+    if args.dashboard:
+        import serve_dashboard
+        serve_dashboard.main()
+        return
 
     # Default to single sweep if neither watch nor once specified
     if args.watch:

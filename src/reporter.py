@@ -120,6 +120,20 @@ class ReportGenerator:
         lines.append("*Generated automatically by your custom Job Applier Watcher.*")
 
         content = "\n".join(lines)
+
+        # Keep dashboard/data.js in sync
+        try:
+            dashboard_data_js = self.reports_dir.parent / "dashboard" / "data.js"
+            if dashboard_data_js.parent.exists():
+                import json
+                jobs_dict = {j.get("job_id", f"job_{i}"): j for i, j in enumerate(all_jobs)}
+                with open(dashboard_data_js, "w", encoding="utf-8") as df:
+                    df.write("window.INITIAL_APPLICATIONS_DATA = ")
+                    json.dump(jobs_dict, df, indent=2, ensure_ascii=False)
+                    df.write(";\n")
+        except Exception:
+            pass
+
         try:
             with open(report_file, "w", encoding="utf-8") as f:
                 f.write(content)
