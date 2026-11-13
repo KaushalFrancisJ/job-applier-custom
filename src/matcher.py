@@ -9,6 +9,7 @@ from typing import Dict, List, Optional, Tuple
 
 from src.agy_bridge import AgyBridge
 from src.candidate_profile import CandidateProfile
+from src.utils import sanitize_unicode
 
 
 @dataclass
@@ -268,7 +269,7 @@ class JobMatcher:
                 )
                 bespoke = self.agy.ask(prompt, timeout_seconds=15)
                 if bespoke and len(bespoke) > 40 and not bespoke.startswith("Error"):
-                    return bespoke
+                    return sanitize_unicode(bespoke)
             except Exception as e:
                 logger.warning(f"[Matcher] agy pitch synthesis fallback: {e}")
 

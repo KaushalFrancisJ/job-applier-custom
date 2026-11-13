@@ -7,6 +7,8 @@ import logging
 import subprocess
 from typing import Optional
 
+from src.utils import sanitize_unicode
+
 logger = logging.getLogger("agy_bridge")
 
 
@@ -28,7 +30,7 @@ class AgyBridge:
                 timeout=timeout_seconds,
             )
             if res.returncode == 0:
-                return res.stdout.strip()
+                return sanitize_unicode(res.stdout.strip())
             else:
                 logger.warning(f"[AgyBridge] agy returned code {res.returncode}: {res.stderr[:200]}")
                 return None

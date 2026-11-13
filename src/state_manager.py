@@ -9,6 +9,8 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from src.utils import sanitize_unicode
+
 
 @dataclass
 class JobRecord:
@@ -74,7 +76,7 @@ class StateManager:
             except Exception:
                 pass
             with open(self.state_file, "w", encoding="utf-8") as f:
-                json.dump(self.jobs, f, indent=2)
+                json.dump(self.jobs, f, indent=2, ensure_ascii=False)
         except (PermissionError, OSError) as e:
             # Fallback to user temp storage if workspace is write-locked (e.g. sandbox environment)
             import tempfile
@@ -83,7 +85,7 @@ class StateManager:
                 fallback_dir.mkdir(parents=True, exist_ok=True)
                 fallback_file = fallback_dir / self.state_file.name
                 with open(fallback_file, "w", encoding="utf-8") as f:
-                    json.dump(self.jobs, f, indent=2)
+                    json.dump(self.jobs, f, indent=2, ensure_ascii=False)
             except Exception:
                 pass
 
@@ -114,7 +116,11 @@ class StateManager:
         return False
 
     def record_job(self, record: JobRecord):
-        self.jobs[record.job_id] = asdict(record)
+        rec_dict = asdict(record)
+        for k, v in rec_dict.items():
+            if isinstance(v, str):
+                rec_dict[k] = sanitize_unicode(v)
+        self.jobs[record.job_id] = rec_dict
         self._save()
 
     def get_record(self, job_id: str) -> Optional[dict]:
