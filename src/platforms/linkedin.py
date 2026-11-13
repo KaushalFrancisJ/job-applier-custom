@@ -20,7 +20,11 @@ class LinkedInPlatform(BasePlatform):
         return []
 
     def apply_to_job(self, job: RawJob, pitch_note: str, resume_path: Optional[Path] = None) -> tuple:
-        logger.info(f"[LinkedIn] Easy Applying to {job.company} - {job.title}...")
-        if resume_path and resume_path.exists():
-            logger.info(f"[LinkedIn] Using resume: {resume_path.name}")
-        return True, "APPLIED"
+        """
+        Smart Shortlist Policy:
+        LinkedIn applications are never auto-submitted by the bot to protect Kaushal's
+        personal profile from bot detection, CAPTCHAs, and account checkpoints.
+        Returns ACTION_REQUIRED so it is queued in the Daily Report with 1-click manual apply.
+        """
+        logger.info(f"[LinkedIn Smart Shortlist] Queued for manual apply: {job.company} - {job.title}")
+        return False, "ACTION_REQUIRED: LinkedIn Smart Shortlist — apply manually via direct link with pre-drafted pitch"

@@ -158,8 +158,11 @@ class JobApplierEngine:
                 print(f"  🚫 Filtered [{raw_job.company} - {raw_job.title}]: {eval_res.reason}")
                 continue
 
-            # If action required (external link, custom test, etc.)
-            if eval_res.action_required:
+            # If action required (external link, custom test, LinkedIn Smart Shortlist, etc.)
+            if eval_res.action_required or raw_job.platform == "linkedin":
+                action_note = eval_res.action_notes
+                if raw_job.platform == "linkedin":
+                    action_note = f"LinkedIn Smart Shortlist ({eval_res.score:.0f}% match): Pre-drafted pitch ready. Click link to apply safely."
                 record = JobRecord(
                     job_id=job_id,
                     title=raw_job.title,
@@ -171,15 +174,15 @@ class JobApplierEngine:
                     status="ACTION_REQUIRED",
                     applied_at=now_str,
                     pitch_note=eval_res.pitch_note,
-                    action_notes=eval_res.action_notes,
+                    action_notes=action_note,
                     match_score=eval_res.score,
                 )
                 if not self.dry_run:
                     self.state_mgr.record_job(record)
                 sweep_stats["action_required"] += 1
-                print(f"  ⚠️ Action Required [{raw_job.company} - {raw_job.title}]: {eval_res.action_notes}")
+                print(f"  ⚠️ Action Required [{raw_job.company} - {raw_job.title}]: {action_note}")
                 self.notifier.notify_action_required(
-                    raw_job.company, raw_job.title, record.url, eval_res.action_notes, eval_res.score
+                    raw_job.company, raw_job.title, record.url, action_note, eval_res.score
                 )
                 continue
 

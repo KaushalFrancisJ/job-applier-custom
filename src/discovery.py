@@ -700,6 +700,85 @@ class JobDiscoveryEngine:
             except Exception as e:
                 logger.warning(f"[Discovery] Dynamic Instahyre sweep warning: {e}")
 
+            # ----------------------------------------------------
+            # 4. Dynamic LinkedIn Discovery (Smart Shortlist)
+            # ----------------------------------------------------
+            try:
+                unexplored_linkedin = []
+                seen_urls_linkedin = set()
+                known_count_linkedin = 0
+
+                linkedin_search_url = (
+                    "https://www.linkedin.com/jobs/search-results/?"
+                    "keywords=Applied%20AI%20OR%20Full%20Stack%20Engineer%20OR%20Generative%20AI%20OR%20Backend%20Engineer&"
+                    "location=India&f_TPR=r86400&sortBy=DD"
+                )
+                try:
+                    page.goto(linkedin_search_url, wait_until="domcontentloaded", timeout=25000)
+                    page.wait_for_timeout(3500)
+                except Exception as nav_e:
+                    logger.warning(f"[Discovery] LinkedIn navigation warning: {nav_e}")
+
+                title_spans = page.locator("main div[data-display-contents='true'] p span[aria-hidden='true']").all()
+
+                for span in title_spans:
+                    try:
+                        title_raw = span.inner_text().strip()
+                        if not title_raw or any(k in title_raw.lower() for k in ["results", "filter", "how promoted"]):
+                            continue
+
+                        # Extract company and location from the card's text lines
+                        card_container = span.locator("xpath=../../..")
+                        p_tags = card_container.locator("p").all()
+                        lines = [p.inner_text().strip() for p in p_tags if p.inner_text().strip()]
+
+                        raw_title = lines[0].split("\n")[0].strip() if len(lines) > 0 else title_raw
+                        title = re.sub(r"\(Verified job\)", "", raw_title).strip()
+                        company = lines[1].strip() if len(lines) > 1 else "LinkedIn Company"
+                        location = lines[2].strip() if len(lines) > 2 else "India"
+
+                        # Click card to populate currentJobId
+                        span.click()
+                        page.wait_for_timeout(700)
+
+                        m = re.search(r"currentJobId=(\d+)", page.url)
+                        job_id_num = m.group(1) if m else ""
+                        direct_url = f"https://www.linkedin.com/jobs/view/{job_id_num}/" if job_id_num else page.url
+                        clean_url = direct_url.split("?")[0]
+
+                        if clean_url in seen_urls_linkedin:
+                            continue
+                        seen_urls_linkedin.add(clean_url)
+
+                        job_id = hashlib.sha256(f"linkedin:{title}:{company}".encode()).hexdigest()[:16]
+                        if is_known_job(job_id, clean_url):
+                            known_count_linkedin += 1
+                            continue
+
+                        unexplored_linkedin.append({
+                            "platform": "linkedin",
+                            "title": title,
+                            "company": company,
+                            "location": location,
+                            "salary": "Competitive",
+                            "description": f"{title} at {company} ({location}) on LinkedIn.",
+                            "url": clean_url,
+                            "is_easy_apply": False,
+                            "external_url": clean_url,
+                            "has_custom_screening": True,  # Ensures it's routed to ACTION_REQUIRED Smart Shortlist!
+                        })
+
+                        if len(unexplored_linkedin) >= target_quota:
+                            print(f"  🎯 [LinkedIn] Target unexplored quota reached ({len(unexplored_linkedin)} >= {target_quota}). Done with LinkedIn.")
+                            break
+                    except Exception:
+                        continue
+
+                print(f"  📄 [LinkedIn] {len(unexplored_linkedin)} unexplored collected ({known_count_linkedin} already seen).")
+                extra_jobs.extend(unexplored_linkedin)
+            except Exception as e:
+                logger.warning(f"[Discovery] Dynamic LinkedIn sweep warning: {e}")
+
             page.close()
         except Exception as e:
             logger.warning(f"[Discovery] Dynamic portal sweep error: {e}")

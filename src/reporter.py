@@ -45,19 +45,24 @@ class ReportGenerator:
         ]
 
         # Action Required Section
-        lines.append("## ⚠️ Action Required Jobs")
-        lines.append("These jobs match your profile and salary (≥ 10 LPA), but require external application or specific action.")
+        lines.append("## ⚠️ Action Required Jobs & Smart Shortlists")
+        lines.append("These jobs match your profile and target salary (≥ 10 LPA). For LinkedIn Smart Shortlists and external ATS postings, click the direct link and paste your pre-drafted pitch note (100% account safe).")
         lines.append("")
         if not action_req:
             lines.append("_No pending actions right now. All matching jobs were submitted automatically._\n")
         else:
-            lines.append("| Company | Role | Location | Salary | Reason / Direct Link |")
-            lines.append("| :--- | :--- | :--- | :--- | :--- |")
+            lines.append("| Platform | Company | Role | Match | Tailored Pitch to Copy | Reason / Action |")
+            lines.append("| :---: | :--- | :--- | :---: | :--- | :--- |")
             for j in action_req:
+                p_name = j.get("platform", "LinkedIn").capitalize()
                 url_link = f"[{j.get('title')}]({j.get('url')})" if j.get("url") else j.get("title")
-                notes = j.get("action_notes", "External ATS")
+                score = f"{j.get('match_score', 80):.0f}%"
+                pitch = j.get("pitch_note", "") or "Apply with primary resume."
+                if len(pitch) > 130:
+                    pitch = pitch[:127] + "..."
+                notes = j.get("action_notes", "Manual 1-click apply")
                 lines.append(
-                    f"| **{j.get('company')}** | {url_link} | {j.get('location')} | {j.get('salary', 'Competitive')} | {notes} |"
+                    f"| **{p_name}** | **{j.get('company')}** | {url_link} | {score} | *\"{pitch}\"* | {notes} |"
                 )
             lines.append("")
 

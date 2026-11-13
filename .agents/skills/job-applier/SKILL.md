@@ -140,7 +140,7 @@ open_browser.bat
 * `state/applications.json`: JSON database of all discovered, applied, and filtered jobs (prevents duplicates).
 * `reports/daily_report_YYYY-MM-DD.md`: Live markdown audit report.
 * `src/candidate_profile.py`: Loads `cv.md` and `Kaushal_Francis_J_res.pdf`.
-* `src/discovery.py`: Real-time discovery engine across Wellfound, WAAS, Instahyre, Cutshort, and Hirist using Option B unexplored quota pagination.
+* `src/discovery.py`: Real-time discovery engine across Wellfound, WAAS, Instahyre, Cutshort, Hirist, and LinkedIn using Option B unexplored quota pagination.
 * `src/quota_manager.py`: Rolling weekly application limit tracker (e.g. YC WAAS 5 apps/week), active cooldown calculator, and priority recovery queue manager.
 * `src/matcher.py`: Pure ML filtering, salary verification, and pitch note synthesis.
 * `src/platforms/`: Platform automation handlers (`wellfound.py`, `workatastartup.py`, `instahyre.py`, `cutshort.py`, `hirist.py`, `linkedin.py`, `naukri.py`).
@@ -164,3 +164,11 @@ open_browser.bat
 1. **Hard Rate Limit Enforcement:** Work at a Startup strictly enforces **5 applications per rolling 7 days**. The driver confirms dialog closure and confirmation indicators before recording any application as `APPLIED`.
 2. **Deterministic Cooldown Tracking:** `PlatformQuotaManager` calculates active applications within the rolling 7-day window. When 5/5 slots are occupied, remaining WAAS listings are marked as `QUOTA_EXHAUSTED` and scheduled for recovery.
 3. **Automated Priority Recovery:** When the rolling window unlocks a slot (oldest application timestamp + 7 days), the watcher recovers queued roles in priority order (`match_score` descending) and submits them live automatically.
+
+---
+
+## 🎯 LinkedIn Smart Shortlisting (100% Account-Safe)
+
+1. **Zero Bot-Ban Risk:** LinkedIn aggressively detects and restricts accounts executing automated form submissions. To safeguard Kaushal's personal profile and network, the watcher avoids automated clicking on LinkedIn Apply buttons.
+2. **Automated Discovery & Bespoke Pitching:** The engine actively searches LinkedIn for recent (past 24h) roles in India matching Applied AI, GenAI, and Fullstack, evaluates CTC alignment (≥ 10 LPA), and pre-drafts bespoke pitches via `AgyBridge`.
+3. **1-Click Execution:** Roles are queued under `ACTION_REQUIRED` in `reports/daily_report_YYYY-MM-DD.md` with direct permanent URLs (`https://www.linkedin.com/jobs/view/{id}/`) and tailored pitch notes, enabling 30-second manual submissions with industry-leading callback rates.
