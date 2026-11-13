@@ -945,10 +945,10 @@ window.INITIAL_APPLICATIONS_DATA = {
     "salary": "Competitive",
     "url": "https://www.hirist.tech/j/purpletalk-principal-ai-scientist-1681085",
     "platform": "hirist",
-    "status": "ACTION_REQUIRED",
-    "applied_at": "2026-11-12T15:49:55.061682",
+    "status": "APPLIED",
+    "applied_at": "2026-11-13T21:24:00.388831",
     "pitch_note": "Hi team, I saw your opening for Principal AI Scientist and wanted to reach out. In my current role as Senior Associate at Payday Suite, I improved RAG response accuracy by 40% using AWS Bedrock Titan embeddings, PgVector, and built a custom LLM-as-a-judge evaluation harness via Groq. I've also built an open-source Desktop Coding Agent using NVIDIA NIM and MCP (github.com/KaushalFrancisJ/Coding-agent-nvidia). I'd love to bring this hands-on GenAI orchestration experience to your team!",
-    "action_notes": "Hirist screening required: Current CTC, Expected CTC, Notice Period.",
+    "action_notes": "Submitted live on Hirist with Current CTC: 4.75 LPA, Expected: 11 LPA, Notice: 1 Month.",
     "match_score": 74.0
   },
   "299a1c5be5bbffec": {
@@ -1057,10 +1057,10 @@ window.INITIAL_APPLICATIONS_DATA = {
     "salary": "Competitive",
     "url": "https://www.hirist.tech/j/opptra-ai-product-engineer-1670833",
     "platform": "hirist",
-    "status": "ACTION_REQUIRED",
-    "applied_at": "2026-11-12T15:50:33.946732",
+    "status": "APPLIED",
+    "applied_at": "2026-11-13T21:24:00.388831",
     "pitch_note": "Hi team, I'm reaching out regarding the AI Product Engineer role. I specialize in building production agentic systems and scalable backends. Recently, I architected an asynchronous desktop coding assistant powered by NVIDIA NIM APIs and the Model Context Protocol (MCP) with streaming JSON handling (github.com/KaushalFrancisJ/Coding-agent-nvidia). Backed by fullstack engineering in Python/FastAPI, TypeScript, and AWS Lambda/SQS, I am confident I can contribute immediately.",
-    "action_notes": "Hirist screening required: Have you built any product leveraging AI, Current CTC.",
+    "action_notes": "Submitted live on Hirist with AI project portfolio (NVIDIA NIM MCP + Bedrock RAG) and Current CTC: 4.75 LPA.",
     "match_score": 69.0
   },
   "a409f8c6bbe5d0b6": {
@@ -1141,10 +1141,10 @@ window.INITIAL_APPLICATIONS_DATA = {
     "salary": "Competitive",
     "url": "https://www.hirist.tech/j/cumulations-technologies-full-stack-developer-mern-stack-1677858",
     "platform": "hirist",
-    "status": "ACTION_REQUIRED",
-    "applied_at": "2026-11-12T15:50:57.365811",
+    "status": "APPLIED",
+    "applied_at": "2026-11-13T21:24:00.388831",
     "pitch_note": "Hi team, I'm excited about the Full Stack Developer - MERN Stack opportunity. As a Senior Associate at 4i apps, I own fullstack feature delivery across Next.js, Node.js/FastAPI, and event-driven AWS infrastructure, alongside production GenAI workflows with PgVector and AWS Bedrock. Check out my production habit engine API with Redis caching and Docker at github.com/KaushalFrancisJ/Habit-Formation-Application. Looking forward to speaking!",
-    "action_notes": "Hirist screening required: Relocate to Bangalore (Yes/No), 12th & Degree percentage.",
+    "action_notes": "Submitted live on Hirist with Bangalore relocation: Yes, 12th: 91.6%, Degree: 7.47 CGPA, Notice: 1 Month.",
     "match_score": 69.0
   },
   "5f7236d4e7656728": {
@@ -2751,10 +2751,10 @@ window.INITIAL_APPLICATIONS_DATA = {
     "salary": "Competitive",
     "url": "https://www.hirist.tech/j/ai-full-stack-engineer-1666856",
     "platform": "hirist",
-    "status": "ACTION_REQUIRED",
-    "applied_at": "2026-11-12T18:49:35.319251",
+    "status": "APPLIED",
+    "applied_at": "2026-11-13T21:24:00.388831",
     "pitch_note": "Hi team, I'm reaching out regarding the AI Full Stack Engineer role. I specialize in building production agentic systems and scalable backends. Recently, I architected an asynchronous desktop coding assistant powered by NVIDIA NIM APIs and the Model Context Protocol (MCP) with streaming JSON handling (github.com/KaushalFrancisJ/Coding-agent-nvidia). Backed by fullstack engineering in Python/FastAPI, TypeScript, and AWS Lambda/SQS, I am confident I can contribute immediately.",
-    "action_notes": "Hirist screening required: 9 technical screening questions on LLMs and RAG.",
+    "action_notes": "Submitted live on Hirist with 9 detailed technical answers on LLM APIs, prompt engineering, and RAG.",
     "match_score": 77.0
   },
   "b3e5f689a06a3f6e": {
