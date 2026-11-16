@@ -476,28 +476,45 @@ class JobDiscoveryEngine:
             page = context.new_page()
 
             # ----------------------------------------------------
-            # 1. Dynamic Hirist Discovery (Option B Quota Pagination)
+            # 1. Dynamic Hirist Discovery (Option B Quota Pagination across Feeds)
             # ----------------------------------------------------
             try:
                 unexplored_hirist = []
                 seen_urls_hirist = set()
                 known_count_hirist = 0
 
-                for page_idx in range(1, max_pages + 1):
-                    hirist_url = "https://www.hirist.tech/jobfeed" if page_idx == 1 else f"https://www.hirist.tech/jobfeed?page={page_idx}"
+                # Hirist exploration sources:
+                # 1. Base personalized jobfeed
+                # 2. Targeted topic & category feeds with YOE filters (minexp=0&maxexp=3)
+                hirist_sources = [
+                    "https://www.hirist.tech/jobfeed",
+                    "https://www.hirist.tech/k/generative-ai-jobs?minexp=0&maxexp=3",
+                    "https://www.hirist.tech/k/llm-jobs?minexp=0&maxexp=3",
+                    "https://www.hirist.tech/c/ai-ml-jobs?minexp=0&maxexp=3",
+                    "https://www.hirist.tech/k/python-jobs?minexp=0&maxexp=3",
+                    "https://www.hirist.tech/c/full-stack-development-jobs?minexp=0&maxexp=3",
+                    "https://www.hirist.tech/k/generative-ai-jobs?page=2&minexp=0&maxexp=3",
+                    "https://www.hirist.tech/k/llm-jobs?page=2&minexp=0&maxexp=3",
+                    "https://www.hirist.tech/c/ai-ml-jobs?page=2&minexp=0&maxexp=3",
+                    "https://www.hirist.tech/k/python-jobs?page=2&minexp=0&maxexp=3",
+                ]
+
+                max_hirist_steps = min(len(hirist_sources), max_pages * 2)
+
+                for step_idx in range(1, max_hirist_steps + 1):
+                    hirist_url = hirist_sources[step_idx - 1]
                     try:
                         page.goto(hirist_url, wait_until="domcontentloaded", timeout=25000)
-                        page.wait_for_timeout(2500)
-                        # Trigger any lazy loading via scroll
+                        page.wait_for_timeout(2000)
                         page.evaluate("window.scrollTo(0, document.body.scrollHeight / 2)")
                         page.wait_for_timeout(1000)
                     except Exception as nav_e:
-                        logger.warning(f"[Discovery] Hirist navigation warning on page {page_idx}: {nav_e}")
-                        break
+                        logger.warning(f"[Discovery] Hirist navigation warning on step {step_idx} ({hirist_url}): {nav_e}")
+                        continue
 
                     cards = page.locator("a[href*='/j/']").all()
                     if not cards:
-                        break
+                        continue
 
                     for a in cards:
                         try:
@@ -550,7 +567,7 @@ class JobDiscoveryEngine:
                         except Exception:
                             continue
 
-                    print(f"  📄 [Hirist Page {page_idx}/{max_pages}] {len(unexplored_hirist)} unexplored collected ({known_count_hirist} already seen).")
+                    print(f"  📄 [Hirist Step {step_idx}/{max_hirist_steps}] {len(unexplored_hirist)} unexplored collected ({known_count_hirist} already seen).")
 
                     if len(unexplored_hirist) >= target_quota:
                         print(f"  🎯 [Hirist] Target unexplored quota reached ({len(unexplored_hirist)} >= {target_quota}). Done with Hirist.")
