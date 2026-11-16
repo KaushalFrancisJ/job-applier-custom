@@ -115,7 +115,7 @@
           <span class="text-2xl font-extrabold text-white" id="kpi-applied-today">--</span>
           <span class="text-xs text-emerald-400 font-medium">roles today</span>
         </div>
-        <p class="text-[11px] text-slate-400 mt-1 truncate" id="kpi-applied-today-sub">9 LinkedIn, 2 Hirist</p>
+        <p class="text-[11px] text-slate-400 mt-1 truncate" id="kpi-applied-today-sub">--</p>
       </div>
 
       <!-- 2. Total Applied -->
@@ -130,7 +130,7 @@
           <span class="text-2xl font-extrabold text-white" id="kpi-total-applied">--</span>
           <span class="text-xs text-slate-400 font-medium">all-time</span>
         </div>
-        <p class="text-[11px] text-slate-400 mt-1 truncate">Across 7 platforms</p>
+        <p class="text-[11px] text-slate-400 mt-1 truncate" id="kpi-total-applied-sub">--</p>
       </div>
 
       <!-- 3. Action Required -->
@@ -145,7 +145,7 @@
           <span class="text-2xl font-extrabold text-white" id="kpi-action-required">--</span>
           <span class="text-xs text-amber-400 font-medium">ready to submit</span>
         </div>
-        <p class="text-[11px] text-slate-400 mt-1 truncate">Pitches pre-drafted</p>
+        <p class="text-[11px] text-slate-400 mt-1 truncate" id="kpi-action-req-sub">--</p>
       </div>
 
       <!-- 4. LinkedIn Shortlists -->
@@ -160,7 +160,7 @@
           <span class="text-2xl font-extrabold text-white" id="kpi-linkedin-shortlists">--</span>
           <span class="text-xs text-sky-400 font-medium">high-match</span>
         </div>
-        <p class="text-[11px] text-slate-400 mt-1 truncate" id="kpi-linkedin-sub">10 applied · 6 pending</p>
+        <p class="text-[11px] text-slate-400 mt-1 truncate" id="kpi-linkedin-sub">--</p>
       </div>
 
       <!-- 5. Quota Recovery Queue -->
@@ -173,9 +173,9 @@
         </div>
         <div class="flex items-baseline gap-2">
           <span class="text-2xl font-extrabold text-white" id="kpi-quota-queue">--</span>
-          <span class="text-xs text-purple-400 font-medium">YC WAAS</span>
+          <span class="text-xs text-purple-400 font-medium">queued</span>
         </div>
-        <p class="text-[11px] text-slate-400 mt-1 truncate">Unlocks Nov 19</p>
+        <p class="text-[11px] text-slate-400 mt-1 truncate" id="kpi-quota-sub">--</p>
       </div>
 
       <!-- 6. Total Processed / Filtered -->
@@ -190,7 +190,7 @@
           <span class="text-2xl font-extrabold text-white" id="kpi-total-processed">--</span>
           <span class="text-xs text-slate-500 font-medium">indexed</span>
         </div>
-        <p class="text-[11px] text-slate-400 mt-1 truncate" id="kpi-filtered-sub">137 filtered out</p>
+        <p class="text-[11px] text-slate-400 mt-1 truncate" id="kpi-filtered-sub">--</p>
       </div>
     </section>
 
@@ -251,6 +251,9 @@
         <button data-tab="TODAY" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition bg-slate-800 text-slate-300 hover:bg-slate-700">
           ⚡ Applied Today (<span id="count-today">0</span>)
         </button>
+        <button data-tab="PROCESSED_TODAY" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition bg-slate-800 text-slate-300 hover:bg-slate-700">
+          🔍 Processed Today (<span id="count-processed-today">0</span>)
+        </button>
         <button data-tab="ACTION_REQUIRED" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition bg-slate-800 text-slate-300 hover:bg-slate-700">
           ⚠️ Action Required (<span id="count-action-req">0</span>)
         </button>
@@ -262,6 +265,9 @@
         </button>
         <button data-tab="FILTERED_OUT" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition bg-slate-800 text-slate-300 hover:bg-slate-700">
           🚫 Filtered Out (<span id="count-filtered">0</span>)
+        </button>
+        <button data-tab="EXPIRED" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition bg-slate-800 text-slate-300 hover:bg-slate-700">
+          ⏱️ Expired (<span id="count-expired">0</span>)
         </button>
       </div>
 
@@ -518,9 +524,10 @@
           throw new Error('API unavailable');
         }
       } catch (e) {
-        // Fallback to window.INITIAL_APPLICATIONS_DATA from data.js
-        if (window.INITIAL_APPLICATIONS_DATA) {
-          allJobs = Object.values(window.INITIAL_APPLICATIONS_DATA);
+        // Fallback to data.js (supports both INITIAL_APPLICATIONS_DATA and APPLICATIONS_DATA, object or array)
+        const rawData = window.INITIAL_APPLICATIONS_DATA || window.APPLICATIONS_DATA;
+        if (rawData) {
+          allJobs = Array.isArray(rawData) ? rawData : Object.values(rawData);
           document.getElementById('last-sync-time').innerHTML = `<i data-lucide="hard-drive" class="w-3.5 h-3.5 text-slate-400"></i> Loaded from data.js`;
         }
       }
@@ -549,6 +556,7 @@
       const actionReq = allJobs.filter(j => j.status === 'ACTION_REQUIRED');
       const quotaQueue = allJobs.filter(j => j.status === 'QUOTA_EXHAUSTED');
       const filtered = allJobs.filter(j => j.status === 'FILTERED_OUT');
+      const expired = allJobs.filter(j => j.status === 'EXPIRED');
 
       // Dynamic platform breakdown for jobs applied today
       const todayPlatforms = {};
@@ -565,24 +573,51 @@
       const linkedinApplied = linkedinTotal.filter(j => j.status === 'APPLIED');
       const linkedinPending = linkedinTotal.filter(j => j.status === 'ACTION_REQUIRED');
 
+      // Dynamic Quota platforms
+      const quotaPlatforms = {};
+      quotaQueue.forEach(j => {
+        const plat = PLATFORMS_META[j.platform]?.label || j.platform || 'Other';
+        quotaPlatforms[plat] = (quotaPlatforms[plat] || 0) + 1;
+      });
+      const quotaBreakdown = Object.entries(quotaPlatforms)
+        .map(([plat, count]) => `${count} ${plat}`)
+        .join(', ');
+
+      // Total Applied distinct platforms
+      const appliedPlatCount = new Set(allApplied.map(j => j.platform)).size;
+
       // Populate KPI elements
       document.getElementById('kpi-applied-today').textContent = appliedToday.length;
-      document.getElementById('kpi-applied-today-sub').textContent = todayBreakdown || '0 recorded today';
+      document.getElementById('kpi-applied-today-sub').textContent = todayBreakdown || '0 applied today';
       document.getElementById('kpi-total-applied').textContent = allApplied.length;
+      const elAppliedSub = document.getElementById('kpi-total-applied-sub');
+      if (elAppliedSub) elAppliedSub.textContent = `Across ${appliedPlatCount} platforms`;
+
       document.getElementById('kpi-action-required').textContent = actionReq.length;
+      const elActionSub = document.getElementById('kpi-action-req-sub');
+      if (elActionSub) elActionSub.textContent = actionReq.length > 0 ? `${actionReq.length} pre-drafted pitches` : 'All caught up';
+
       document.getElementById('kpi-linkedin-shortlists').textContent = linkedinApplied.length + linkedinPending.length;
       document.getElementById('kpi-linkedin-sub').textContent = `${linkedinApplied.length} applied · ${linkedinPending.length} pending`;
+
       document.getElementById('kpi-quota-queue').textContent = quotaQueue.length;
+      const elQuotaSub = document.getElementById('kpi-quota-sub');
+      if (elQuotaSub) elQuotaSub.textContent = quotaBreakdown ? `${quotaBreakdown} queued` : '0 queued';
+
       document.getElementById('kpi-total-processed').textContent = allJobs.length;
-      document.getElementById('kpi-filtered-sub').textContent = `${filtered.length} filtered out`;
+      document.getElementById('kpi-filtered-sub').textContent = `${filtered.length} filtered out · ${todayJobs.length} scanned today`;
 
       // Update Tab Badges
       document.getElementById('count-all').textContent = allJobs.length;
       document.getElementById('count-today').textContent = appliedToday.length;
+      const elProcToday = document.getElementById('count-processed-today');
+      if (elProcToday) elProcToday.textContent = todayJobs.length;
       document.getElementById('count-action-req').textContent = actionReq.length;
       document.getElementById('count-applied').textContent = allApplied.length;
       document.getElementById('count-quota').textContent = quotaQueue.length;
       document.getElementById('count-filtered').textContent = filtered.length;
+      const elExpired = document.getElementById('count-expired');
+      if (elExpired) elExpired.textContent = expired.length;
     }
 
     // Render interactive charts
@@ -617,19 +652,20 @@
       });
 
       // 2. Status Funnel
-      const sCounts = { APPLIED: 0, ACTION_REQUIRED: 0, QUOTA_EXHAUSTED: 0, FILTERED_OUT: 0 };
+      const sCounts = { APPLIED: 0, ACTION_REQUIRED: 0, QUOTA_EXHAUSTED: 0, FILTERED_OUT: 0, EXPIRED: 0 };
       allJobs.forEach(j => {
         if (sCounts[j.status] !== undefined) sCounts[j.status]++;
+        else sCounts[j.status] = 1;
       });
 
       if (charts.status) charts.status.destroy();
       charts.status = new Chart(document.getElementById('chart-status'), {
         type: 'doughnut',
         data: {
-          labels: ['Applied', 'Action Required', 'Quota Queue', 'Filtered'],
+          labels: ['Applied', 'Action Required', 'Quota Queue', 'Filtered', 'Expired'],
           datasets: [{
-            data: Object.values(sCounts),
-            backgroundColor: ['#10b981', '#f59e0b', '#8b5cf6', '#475569'],
+            data: [sCounts.APPLIED || 0, sCounts.ACTION_REQUIRED || 0, sCounts.QUOTA_EXHAUSTED || 0, sCounts.FILTERED_OUT || 0, sCounts.EXPIRED || 0],
+            backgroundColor: ['#10b981', '#f59e0b', '#8b5cf6', '#475569', '#f43f5e'],
             borderWidth: 0,
           }]
         },
@@ -717,11 +753,15 @@
 
       return allJobs.filter(j => {
         // Tab Filter
-        if (currentTab === 'TODAY' && !(j.applied_at || '').startsWith(todayStr)) return false;
+        if (currentTab === 'TODAY') {
+          if (j.status !== 'APPLIED' || !(j.applied_at || '').startsWith(todayStr)) return false;
+        }
+        if (currentTab === 'PROCESSED_TODAY' && !(j.applied_at || '').startsWith(todayStr)) return false;
         if (currentTab === 'ACTION_REQUIRED' && j.status !== 'ACTION_REQUIRED') return false;
         if (currentTab === 'APPLIED' && j.status !== 'APPLIED') return false;
         if (currentTab === 'QUOTA_EXHAUSTED' && j.status !== 'QUOTA_EXHAUSTED') return false;
         if (currentTab === 'FILTERED_OUT' && j.status !== 'FILTERED_OUT') return false;
+        if (currentTab === 'EXPIRED' && j.status !== 'EXPIRED') return false;
 
         // Platform Filter
         if (platform !== 'ALL' && j.platform !== platform) return false;
