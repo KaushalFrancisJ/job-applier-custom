@@ -76,8 +76,35 @@ class StateManager:
                 self.state_file.parent.mkdir(parents=True, exist_ok=True)
             except Exception:
                 pass
+
+            # Sync with any concurrent disk updates before writing
+            if self.state_file.exists():
+                try:
+                    with open(self.state_file, "r", encoding="utf-8") as f:
+                        disk_content = f.read().strip()
+                        if disk_content:
+                            disk_data = json.loads(disk_content)
+                            for k, v in disk_data.items():
+                                if k not in self.jobs:
+                                    self.jobs[k] = v
+                                elif v.get("status") == "FILTERED_OUT" and self.jobs[k].get("status") != "FILTERED_OUT":
+                                    # Always honor manual/external filter decisions
+                                    self.jobs[k] = v
+                except Exception:
+                    pass
+
             with open(self.state_file, "w", encoding="utf-8") as f:
                 json.dump(self.jobs, f, indent=2, ensure_ascii=False)
+
+            # Keep dashboard/data.js synchronized automatically
+            try:
+                data_js_path = self.state_file.parent.parent / "dashboard" / "data.js"
+                if data_js_path.parent.exists():
+                    js_payload = "window.INITIAL_APPLICATIONS_DATA = " + json.dumps(self.jobs, indent=2, ensure_ascii=False) + ";\n"
+                    with open(data_js_path, "w", encoding="utf-8") as jf:
+                        jf.write(js_payload)
+            except Exception:
+                pass
         except (PermissionError, OSError) as e:
             # Fallback to user temp storage if workspace is write-locked (e.g. sandbox environment)
             import tempfile

@@ -737,9 +737,29 @@ class JobDiscoveryEngine:
                         company = lines[1].strip() if len(lines) > 1 else "LinkedIn Company"
                         location = lines[2].strip() if len(lines) > 2 else "India"
 
+                        # Early skip: discard executive-level or tech mismatch titles (keep 'Senior' as 2-3 YOE can qualify)
+                        title_lower = title.lower()
+                        early_skip_keywords = [
+                            "principal", "staff", "architect", "director", "head of",
+                            "vp", "chief", "java", "angular", "c++", ".net", "dotnet", "c#", "php"
+                        ]
+                        if any(re.search(rf"\b{re.escape(k)}\b", title_lower) for k in early_skip_keywords):
+                            continue
+
                         # Click card to populate currentJobId
                         span.click()
                         page.wait_for_timeout(700)
+
+                        # Attempt to extract full JD text from right pane
+                        desc_text = f"{title} at {company} ({location}) on LinkedIn."
+                        try:
+                            desc_elem = page.locator("#job-details, div.jobs-description-content__text, div.jobs-box__html-content").first
+                            if desc_elem.is_visible(timeout=1200):
+                                extracted_txt = desc_elem.inner_text().strip()
+                                if len(extracted_txt) > 30:
+                                    desc_text = extracted_txt
+                        except Exception:
+                            pass
 
                         m = re.search(r"currentJobId=(\d+)", page.url)
                         job_id_num = m.group(1) if m else ""
@@ -761,7 +781,7 @@ class JobDiscoveryEngine:
                             "company": company,
                             "location": location,
                             "salary": "Competitive",
-                            "description": f"{title} at {company} ({location}) on LinkedIn.",
+                            "description": desc_text,
                             "url": clean_url,
                             "is_easy_apply": False,
                             "external_url": clean_url,

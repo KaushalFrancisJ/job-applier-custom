@@ -101,6 +101,69 @@ class JobMatcher:
                 reason="Excluded: Requires PhD / theoretical research background.",
             )
 
+        # 1b. Executive / Director / High-Tier Corporate Level Exclusions
+        # NOTE: We do NOT blindly exclude 'Senior' titles — candidate has 19 months experience
+        # and is a Senior Associate. Many teams hire 2-3 YOE engineers for Senior roles.
+        # Filtering is strictly driven by the actual required YOE (upper limit: 3 years).
+        high_tier_title_exclusions = [
+            "director", "vp", "vice president", "chief", "head of",
+            "principal", "staff engineer", "staff software", "staff developer",
+            "senior ii", "senior 2", "senior iii", "senior 3", "senior manager"
+        ]
+        for ht_kw in high_tier_title_exclusions:
+            pattern = rf"\b{re.escape(ht_kw)}\b"
+            if re.search(pattern, title_lower):
+                return MatchResult(
+                    is_match=False,
+                    score=20.0,
+                    reason=f"Excluded high executive/tiered role: matched '{ht_kw}' in title ('{title}').",
+                )
+
+        # 1c. Tech Stack Title Exclusions (Candidate stack: Python, TypeScript, Node.js, Next.js, React, SQL, AWS)
+        tech_title_exclusions = [
+            "java", "spring boot", "springboot", "angular", "c++", ".net", "dotnet", "c#", "ruby", "rails", "php", "sap", "cobol", "salesforce", "scala", "spark"
+        ]
+        for tt_kw in tech_title_exclusions:
+            pattern = rf"\b{re.escape(tt_kw)}\b"
+            if re.search(pattern, title_lower):
+                return MatchResult(
+                    is_match=False,
+                    score=20.0,
+                    reason=f"Excluded tech stack mismatch in title: matched '{tt_kw}' in '{title}'.",
+                )
+
+        # 1d. YOE Filter (Candidate has 19 months experience; upper limit is 2-3 years, with tolerance for 2-4 ranges)
+        # Check title first for explicit high YOE (e.g. '5-7 yrs', '8+ yrs')
+        title_yoe_ranges = re.findall(r"\b(\d+)\s*(?:to|-|–)\s*(\d+)\+?\s*(?:years?|yrs?)\b", title_lower)
+        for lower_y, upper_y in title_yoe_ranges:
+            if int(lower_y) >= 4:
+                return MatchResult(
+                    is_match=False,
+                    score=20.0,
+                    reason=f"Excluded high YOE in title: '{lower_y}-{upper_y} yrs' exceeds profile range (19 months, upper limit 2-3 YOE).",
+                )
+
+        # Check description for ranges with lower bound >= 4 (e.g. '4-7 years', '6-10 years')
+        desc_yoe_ranges = re.findall(r"\b(\d+)\s*(?:to|-|–)\s*(\d+)\+?\s*(?:years?|yrs?)\b", desc_lower)
+        for lower_y, upper_y in desc_yoe_ranges:
+            if int(lower_y) >= 4:
+                return MatchResult(
+                    is_match=False,
+                    score=20.0,
+                    reason=f"Excluded high YOE requirement: JD specifies {lower_y}-{upper_y} years of experience (target: 0-3 YOE).",
+                )
+
+        # Check description for single minimum numbers >= 4 (e.g. '4+ years', '5+ years', '8+ years of experience')
+        single_yoe_matches = re.findall(r"(?<![-–\dto]\s)(?<![-–\d])\b([4-9]|\d{2})\+?\s*(?:years?|yrs?)(?:\s*of\s*experience)?\b", desc_lower)
+        if single_yoe_matches:
+            min_exp_found = min(int(x) for x in single_yoe_matches)
+            if min_exp_found >= 4:
+                return MatchResult(
+                    is_match=False,
+                    score=20.0,
+                    reason=f"Excluded high YOE requirement: JD specifies {min_exp_found}+ years of experience (target: 0-3 YOE).",
+                )
+
         # 2. Location Check (Strict Indian Role Alignment)
         if self.strict_india_only:
             has_disallowed = any(dc in loc_lower for dc in self.disallowed_countries)

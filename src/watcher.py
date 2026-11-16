@@ -65,6 +65,12 @@ class JobWatcherDaemon:
             now_dt = datetime.now()
             print(f"\n--- [Cycle #{self.cycle_count}] {now_dt.strftime('%Y-%m-%d %H:%M:%S IST')} ---")
 
+            # Reload latest state from disk to preserve external edits
+            try:
+                self.engine.state_mgr._load()
+            except Exception:
+                pass
+
             # Execute job sweep
             try:
                 stats = self.engine.run_sweep(target_platform=self.target_platform)
