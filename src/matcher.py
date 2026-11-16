@@ -121,7 +121,9 @@ class JobMatcher:
 
         # 1c. Tech Stack Title Exclusions (Candidate stack: Python, TypeScript, Node.js, Next.js, React, SQL, AWS)
         tech_title_exclusions = [
-            "java", "spring boot", "springboot", "angular", "c++", ".net", "dotnet", "c#", "ruby", "rails", "php", "sap", "cobol", "salesforce", "scala", "spark"
+            "java", "spring boot", "springboot", "angular", "c++", ".net", "dotnet", "c#",
+            "ruby", "rails", "php", "sap", "cobol", "salesforce", "scala", "spark",
+            "golang", "rust", "kotlin", "swift", "elixir"
         ]
         for tt_kw in tech_title_exclusions:
             pattern = rf"\b{re.escape(tt_kw)}\b"
@@ -131,6 +133,13 @@ class JobMatcher:
                     score=20.0,
                     reason=f"Excluded tech stack mismatch in title: matched '{tt_kw}' in '{title}'.",
                 )
+        # Dedicated word-boundary check for 'go' to prevent false substring matches
+        if re.search(r"\bgo\s+(?:developer|engineer|backend|programmer)\b", title_lower) or re.search(r"\b(?:backend|software)\s+engineer\s+-\s+go\b", title_lower):
+            return MatchResult(
+                is_match=False,
+                score=20.0,
+                reason=f"Excluded tech stack mismatch in title: matched Go/Golang in '{title}'.",
+            )
 
         # 1d. YOE Filter (Candidate has 19 months experience; upper limit is 2-3 years, with tolerance for 2-4 ranges)
         # Check title first for explicit high YOE (e.g. '5-7 yrs', '8+ yrs')
@@ -221,8 +230,62 @@ class JobMatcher:
                 )
 
         # Extract core tech stack alignment from JD description
-        genai_hits = [k for k in ["rag", "llm", "bedrock", "pgvector", "faiss", "agent", "groq", "langchain", "prompt", "livekit", "stt", "tts", "conversational"] if k in desc_lower]
-        fullstack_hits = [k for k in ["python", "node", "typescript", "fastapi", "react", "next.js", "docker", "aws", "redis", "django", "postgres", "sql", "api", "microservice", "asyncio", "streaming", "websocket"] if k in desc_lower]
+        genai_hits = [k for k in ["rag", "llm", "bedrock", "pgvector", "faiss", "agent", "groq", "langchain", "prompt", "livekit", "stt", "tts", "conversational", "genai", "generative ai"] if k in desc_lower]
+        primary_lang_hits = [k for k in ["python", "node", "nodejs", "node.js", "typescript", "fastapi", "django", "react", "next.js", "nextjs"] if k in desc_lower]
+        infra_hits = [k for k in ["docker", "aws", "redis", "postgres", "sql", "api", "microservice", "asyncio", "streaming", "websocket"] if k in desc_lower]
+        all_tech_hits = list(set(primary_lang_hits + infra_hits))
+
+        # 4b. Primary Language Gate: Filter out foreign backend languages when candidate's stack is absent
+        foreign_lang_patterns = [
+            ("Go/Golang", [
+                r"\bgolang\b",
+                r"\bgo\s+(?:developer|engineer|backend|microservices|programming|code)\b",
+                r"\b(?:proficiency|proficient|experience|hands-on|expertise|strong|working)\s+(?:in|with)\s+go\b",
+                r"\bbuilt\s+in\s+go\b",
+                r"\bcore\s+go\b",
+            ]),
+            ("Java", [
+                r"\bjava\b",
+                r"\bspring\s*boot\b",
+                r"\bj2ee\b",
+                r"\bcore\s+java\b",
+            ]),
+            ("C++", [
+                r"\bc\+\+\b",
+                r"\bcpp\b",
+            ]),
+            ("C#/.NET", [
+                r"\bc#\b",
+                r"\b\.net\b",
+                r"\bdotnet\b",
+                r"\basp\.net\b",
+            ]),
+            ("Rust", [
+                r"\brust\s+(?:developer|engineer|backend|programming)\b",
+                r"\b(?:proficiency|proficient|experience)\s+(?:in|with)\s+rust\b",
+            ]),
+            ("PHP", [
+                r"\bphp\b",
+                r"\blaravel\b",
+            ]),
+            ("Ruby", [
+                r"\bruby\s+on\s+rails\b",
+                r"\bruby\b",
+            ]),
+            ("Scala", [
+                r"\bscala\b",
+            ]),
+        ]
+
+        # If JD mandates a foreign language and does NOT accept Python/TypeScript/Node.js:
+        if not primary_lang_hits:
+            for lang_name, patterns in foreign_lang_patterns:
+                if any(re.search(pat, desc_lower) for pat in patterns):
+                    return MatchResult(
+                        is_match=False,
+                        score=20.0,
+                        reason=f"Excluded: Requires {lang_name} as primary backend language (candidate stack: Python, TypeScript, Node.js).",
+                    )
 
         has_target_title = any(tr in title_lower for tr in self.target_roles) or any(p in title_lower for p in ["ai", "fullstack", "full stack", "full-stack", "backend", "python", "software engineer", "developer", "sde"])
 
@@ -234,6 +297,16 @@ class JobMatcher:
             "founding engineer", "full stack", "fullstack", "backend engineer", "software engineer", "sde"
         ])
 
+        # Core Stack Requirement:
+        # A software/backend engineer role cannot match if it mentions ZERO primary languages (Python/Node/TypeScript) AND ZERO GenAI skills.
+        # Infra tools alone (Postgres, Docker, SQL, API) cannot qualify a language-unspecified or foreign-language backend role.
+        if not is_explicit_ai and len(primary_lang_hits) == 0 and len(genai_hits) == 0:
+            return MatchResult(
+                is_match=False,
+                score=35.0,
+                reason="Excluded: JD does not require candidate's core stack (Python, TypeScript, Node.js, FastAPI, Next.js, or GenAI/LLMs).",
+            )
+
         # Scoring based on JD substance
         score = 45.0
         if is_explicit_ai:
@@ -243,12 +316,11 @@ class JobMatcher:
         elif any(ai_term in desc_lower for ai_term in ["agent", "llm", "conversational", "generative"]):
             score += 15.0  # Applied AI startup with cross-functional title
 
-        tech_score = len(genai_hits) * 3.5 + len(fullstack_hits) * 2.0
+        tech_score = len(genai_hits) * 3.5 + len(primary_lang_hits) * 3.0 + len(infra_hits) * 1.5
         score += min(tech_score, 30.0)
 
         # Minimum relevance threshold:
-        # If title is explicitly an AI role or Core Engineering role, a score >= 65 is an automatic match even if the card snippet was short
-        if score < 65.0 or (not is_explicit_ai and not is_core_eng and len(genai_hits) == 0 and len(fullstack_hits) < 2):
+        if score < 65.0:
             return MatchResult(
                 is_match=False,
                 score=score,
@@ -279,12 +351,12 @@ class JobMatcher:
             action_notes.append("JD requests specific assignment/video or complex screening responses.")
 
         # 6. Generate Tailored Pitch Note
-        pitch = self._generate_pitch(title, desc_lower, genai_hits, fullstack_hits, company=company, platform=platform)
+        pitch = self._generate_pitch(title, desc_lower, genai_hits, all_tech_hits, company=company, platform=platform)
 
         return MatchResult(
             is_match=True,
             score=min(score, 98.0),
-            reason=f"High match ({score:.1f}/100). Aligned with {', '.join((genai_hits + fullstack_hits)[:4])}.",
+            reason=f"High match ({score:.1f}/100). Aligned with {', '.join((genai_hits + all_tech_hits)[:4])}.",
             action_required=action_required,
             action_notes="; ".join(action_notes),
             pitch_note=pitch,

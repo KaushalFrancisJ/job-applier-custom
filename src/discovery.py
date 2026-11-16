@@ -710,7 +710,7 @@ class JobDiscoveryEngine:
 
                 linkedin_search_url = (
                     "https://www.linkedin.com/jobs/search-results/?"
-                    "keywords=Applied%20AI%20OR%20Full%20Stack%20Engineer%20OR%20Generative%20AI%20OR%20Backend%20Engineer&"
+                    "keywords=%28%22Applied%20AI%22%20OR%20%22Generative%20AI%22%20OR%20%22AI%20Engineer%22%20OR%20%22Python%20Developer%22%20OR%20%22Python%20Backend%22%20OR%20%22Full%20Stack%20Engineer%22%29&"
                     "location=India&f_TPR=r86400&sortBy=DD"
                 )
                 try:
@@ -737,24 +737,42 @@ class JobDiscoveryEngine:
                         company = lines[1].strip() if len(lines) > 1 else "LinkedIn Company"
                         location = lines[2].strip() if len(lines) > 2 else "India"
 
+                        # Check card text early for expired/closed listing indicator
+                        card_raw_text = card_container.inner_text().lower()
+                        if any(c_msg in card_raw_text for c_msg in ["no longer accepting applications", "applications are closed", "job is closed"]):
+                            continue
+
                         # Early skip: discard executive-level or tech mismatch titles (keep 'Senior' as 2-3 YOE can qualify)
                         title_lower = title.lower()
                         early_skip_keywords = [
                             "principal", "staff", "architect", "director", "head of",
-                            "vp", "chief", "java", "angular", "c++", ".net", "dotnet", "c#", "php"
+                            "vp", "chief", "java", "angular", "c++", ".net", "dotnet", "c#", "php",
+                            "golang", "rust", "ruby", "rails", "scala", "salesforce"
                         ]
                         if any(re.search(rf"\b{re.escape(k)}\b", title_lower) for k in early_skip_keywords):
+                            continue
+                        if re.search(r"\bgo\s+(?:developer|engineer|backend|programmer)\b", title_lower) or re.search(r"\b(?:backend|software)\s+engineer\s+-\s+go\b", title_lower):
                             continue
 
                         # Click card to populate currentJobId
                         span.click()
-                        page.wait_for_timeout(700)
+                        page.wait_for_timeout(1000)
+
+                        # Check if right pane indicates expired/closed applications
+                        try:
+                            top_card = page.locator(".jobs-details-top-card, .jobs-unified-top-card").first
+                            if top_card.is_visible(timeout=800):
+                                top_card_txt = top_card.inner_text().lower()
+                                if any(c_msg in top_card_txt for c_msg in ["no longer accepting applications", "applications are closed"]):
+                                    continue
+                        except Exception:
+                            pass
 
                         # Attempt to extract full JD text from right pane
                         desc_text = f"{title} at {company} ({location}) on LinkedIn."
                         try:
                             desc_elem = page.locator("#job-details, div.jobs-description-content__text, div.jobs-box__html-content").first
-                            if desc_elem.is_visible(timeout=1200):
+                            if desc_elem.is_visible(timeout=2500):
                                 extracted_txt = desc_elem.inner_text().strip()
                                 if len(extracted_txt) > 30:
                                     desc_text = extracted_txt

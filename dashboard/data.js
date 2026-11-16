@@ -3115,10 +3115,10 @@ window.INITIAL_APPLICATIONS_DATA = {
     "salary": "Competitive",
     "url": "https://www.linkedin.com/jobs/view/4490580389/",
     "platform": "linkedin",
-    "status": "ACTION_REQUIRED",
+    "status": "EXPIRED",
     "applied_at": "2026-11-13T13:45:40.932520",
     "pitch_note": "Hi team, I'm reaching out regarding the Full Stack Engineer role. I specialize in building production agentic systems and scalable backends. Recently, I architected an asynchronous desktop coding assistant powered by NVIDIA NIM APIs and the Model Context Protocol (MCP) with streaming JSON handling (github.com/KaushalFrancisJ/Coding-agent-nvidia). Backed by fullstack engineering in Python/FastAPI, TypeScript, and AWS Lambda/SQS, I am confident I can contribute immediately.",
-    "action_notes": "LinkedIn Smart Shortlist (67% match): Pre-drafted pitch ready. Click link to apply safely.",
+    "action_notes": "Expired: Listing no longer accepting applications on LinkedIn.",
     "match_score": 67.0
   },
   "d29981280ae04632": {
@@ -3129,10 +3129,10 @@ window.INITIAL_APPLICATIONS_DATA = {
     "salary": "Competitive",
     "url": "https://www.linkedin.com/jobs/view/4488533242/",
     "platform": "linkedin",
-    "status": "ACTION_REQUIRED",
+    "status": "EXPIRED",
     "applied_at": "2026-11-13T13:45:54.609328",
     "pitch_note": "Hi team, I'm reaching out regarding the Associate Software Engineer role. I specialize in building production agentic systems and scalable backends. Recently, I architected an asynchronous desktop coding assistant powered by NVIDIA NIM APIs and the Model Context Protocol (MCP) with streaming JSON handling (github.com/KaushalFrancisJ/Coding-agent-nvidia). Backed by fullstack engineering in Python/FastAPI, TypeScript, and AWS Lambda/SQS, I am confident I can contribute immediately.",
-    "action_notes": "LinkedIn Smart Shortlist (67% match): Pre-drafted pitch ready. Click link to apply safely.",
+    "action_notes": "Expired: Listing no longer accepting applications on LinkedIn.",
     "match_score": 67.0
   },
   "c2ef45d2d29ee4dd": {
@@ -3597,10 +3597,10 @@ window.INITIAL_APPLICATIONS_DATA = {
     "salary": "Competitive",
     "url": "https://www.linkedin.com/jobs/view/4490272400/",
     "platform": "linkedin",
-    "status": "ACTION_REQUIRED",
-    "applied_at": "2026-11-16T13:05:48.042279",
+    "status": "APPLIED",
+    "applied_at": "2026-11-16T15:32:00",
     "pitch_note": "I build reliable, end-to-end full-stack AI systems, recently improving enterprise RAG accuracy by 40% with AWS Bedrock Titan and PgVector at Payday Suite. I also open-sourced an async desktop coding agent powered by NVIDIA NIM and Model Context Protocol (MCP). Based in Chennai, I'm eager to bring robust architecture and production-grade engineering to Deepkore's hybrid team.",
-    "action_notes": "LinkedIn Smart Shortlist (65% match): Pre-drafted pitch ready. Click link to apply safely.",
+    "action_notes": "Candidate directly applied via external ATS.",
     "match_score": 65.0,
     "external_url": "https://www.linkedin.com/jobs/view/4490272400/"
   },
@@ -3627,10 +3627,10 @@ window.INITIAL_APPLICATIONS_DATA = {
     "salary": "Competitive",
     "url": "https://www.linkedin.com/jobs/view/4491261286/",
     "platform": "linkedin",
-    "status": "ACTION_REQUIRED",
+    "status": "FILTERED_OUT",
     "applied_at": "2026-11-16T13:06:18.175183",
     "pitch_note": "Hi team, I'm excited about the Junior Backend Engineer - Trading Platform (India, Chennai) opportunity. As a Senior Associate at 4i apps, I own fullstack feature delivery across Next.js, Node.js/FastAPI, and event-driven AWS infrastructure, alongside production GenAI workflows with PgVector and AWS Bedrock. Check out my production habit engine API with Redis caching and Docker at github.com/KaushalFrancisJ/Habit-Formation-Application. Looking forward to speaking!",
-    "action_notes": "LinkedIn Smart Shortlist (65% match): Pre-drafted pitch ready. Click link to apply safely.",
+    "action_notes": "Excluded: Requires Go/Golang as primary backend language (candidate stack: Python, TypeScript, Node.js).",
     "match_score": 65.0,
     "external_url": "https://www.linkedin.com/jobs/view/4491261286/"
   },
