@@ -3462,10 +3462,10 @@ window.INITIAL_APPLICATIONS_DATA = {
     "salary": "Competitive",
     "url": "https://www.linkedin.com/jobs/view/4490220835/",
     "platform": "linkedin",
-    "status": "ACTION_REQUIRED",
+    "status": "EXPIRED",
     "applied_at": "2026-11-16T13:04:11.680536",
     "pitch_note": "Hi team, I'm excited about the Generative AI Engineer opportunity. As a Senior Associate at 4i apps, I own fullstack feature delivery across Next.js, Node.js/FastAPI, and event-driven AWS infrastructure, alongside production GenAI workflows with PgVector and AWS Bedrock. Check out my production habit engine API with Redis caching and Docker at github.com/KaushalFrancisJ/Habit-Formation-Application. Looking forward to speaking!",
-    "action_notes": "LinkedIn Smart Shortlist (75% match): Pre-drafted pitch ready. Click link to apply safely.",
+    "action_notes": "Job listing is closed and no longer accepting applications on LinkedIn.",
     "match_score": 75.0,
     "external_url": "https://www.linkedin.com/jobs/view/4490220835/"
   },
@@ -3477,10 +3477,10 @@ window.INITIAL_APPLICATIONS_DATA = {
     "salary": "Competitive",
     "url": "https://www.linkedin.com/jobs/view/4491282968/",
     "platform": "linkedin",
-    "status": "ACTION_REQUIRED",
-    "applied_at": "2026-11-16T13:04:25.005146",
+    "status": "APPLIED",
+    "applied_at": "2026-11-16T15:19:39",
     "pitch_note": "To accelerate DHL's logistics intelligence, I bring hands-on experience boosting enterprise RAG retrieval accuracy by 40% using AWS Bedrock and PgVector. I've also built production async systems and open-sourced an NVIDIA NIM agent leveraging Model Context Protocol (MCP) for tool execution. I'm eager to build reliable, high-throughput AI software for your Chennai supply chain team.",
-    "action_notes": "LinkedIn Smart Shortlist (75% match): Pre-drafted pitch ready. Click link to apply safely.",
+    "action_notes": "Applied directly on company portal/LinkedIn by candidate with tailored MCP & RAG pitch note.",
     "match_score": 75.0,
     "external_url": "https://www.linkedin.com/jobs/view/4491282968/"
   },
@@ -3873,5 +3873,19 @@ window.INITIAL_APPLICATIONS_DATA = {
     "action_notes": "Excluded: Senior Java stack mismatch (Candidate stack: Python/TypeScript/React/Node).",
     "match_score": 25.0,
     "external_url": "https://www.linkedin.com/jobs/view/4480637665/"
+  },
+  "persona_labs_founding_ai_engineer": {
+    "job_id": "persona_labs_founding_ai_engineer",
+    "title": "Founding AI Engineer",
+    "company": "Persona Labs",
+    "location": "Remote (India)",
+    "salary": "₹80K - ₹95K / month",
+    "url": "https://docs.google.com/forms/d/e/1FAIpQLSd.../viewform",
+    "platform": "google_form",
+    "status": "APPLIED",
+    "applied_at": "2026-11-16T13:16:00",
+    "pitch_note": "Technical screening submitted: Cold-start recommendation 4-stage funnel (contextual priors + Redis trending cache + multi-armed bandit + streaming micro-interactions) and Payday Suite production RAG/LLM-as-a-judge observability system (+40% accuracy).",
+    "action_notes": "Direct Google Form screening application submitted by candidate.",
+    "match_score": 85.0
   }
 };

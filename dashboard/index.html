@@ -531,15 +531,34 @@
       lucide.createIcons();
     }
 
+    // Helper to get local date string YYYY-MM-DD
+    function getLocalDateString() {
+      const d = new Date();
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
     // Compute and populate KPIs
     function computeKPIs() {
-      const todayStr = '2026-11-13'; // matches operational timeline
+      const todayStr = getLocalDateString();
       const todayJobs = allJobs.filter(j => (j.applied_at || '').startsWith(todayStr));
       const appliedToday = todayJobs.filter(j => j.status === 'APPLIED');
       const allApplied = allJobs.filter(j => j.status === 'APPLIED');
       const actionReq = allJobs.filter(j => j.status === 'ACTION_REQUIRED');
       const quotaQueue = allJobs.filter(j => j.status === 'QUOTA_EXHAUSTED');
       const filtered = allJobs.filter(j => j.status === 'FILTERED_OUT');
+
+      // Dynamic platform breakdown for jobs applied today
+      const todayPlatforms = {};
+      appliedToday.forEach(j => {
+        const plat = PLATFORMS_META[j.platform]?.label || j.platform || 'Other';
+        todayPlatforms[plat] = (todayPlatforms[plat] || 0) + 1;
+      });
+      const todayBreakdown = Object.entries(todayPlatforms)
+        .map(([plat, count]) => `${count} ${plat}`)
+        .join(', ');
 
       // LinkedIn Shortlist
       const linkedinTotal = allJobs.filter(j => j.platform === 'linkedin');
@@ -548,6 +567,7 @@
 
       // Populate KPI elements
       document.getElementById('kpi-applied-today').textContent = appliedToday.length;
+      document.getElementById('kpi-applied-today-sub').textContent = todayBreakdown || '0 recorded today';
       document.getElementById('kpi-total-applied').textContent = allApplied.length;
       document.getElementById('kpi-action-required').textContent = actionReq.length;
       document.getElementById('kpi-linkedin-shortlists').textContent = linkedinApplied.length + linkedinPending.length;
@@ -689,7 +709,7 @@
 
     // Filter and sort jobs
     function getFilteredJobs() {
-      const todayStr = '2026-11-13';
+      const todayStr = getLocalDateString();
       const search = document.getElementById('search-input').value.toLowerCase().trim();
       const platform = document.getElementById('filter-platform').value;
       const location = document.getElementById('filter-location').value;
