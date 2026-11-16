@@ -3552,10 +3552,10 @@ window.INITIAL_APPLICATIONS_DATA = {
     "salary": "Competitive",
     "url": "https://www.linkedin.com/jobs/view/4490264723/",
     "platform": "linkedin",
-    "status": "ACTION_REQUIRED",
-    "applied_at": "2026-11-16T13:05:22.676866",
+    "status": "APPLIED",
+    "applied_at": "2026-11-16T15:58:00",
     "pitch_note": "At Payday Suite, I improved enterprise RAG retrieval accuracy by 40% using AWS Bedrock and PgVector, and recently open-sourced an async desktop coding agent powered by the Model Context Protocol (github.com/KaushalFrancisJ/Coding-agent-nvidia). Archer's mission demands high-reliability generative systems, and my hands-on experience deploying latency-optimized LLM pipelines directly aligns with your GenAI initiatives in Chennai. I'd love to connect.",
-    "action_notes": "LinkedIn Smart Shortlist (75% match): Pre-drafted pitch ready. Click link to apply safely.",
+    "action_notes": "Candidate directly applied on LinkedIn / External ATS.",
     "match_score": 75.0,
     "external_url": "https://www.linkedin.com/jobs/view/4490264723/"
   },
