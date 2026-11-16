@@ -754,9 +754,34 @@ class JobDiscoveryEngine:
                         if re.search(r"\bgo\s+(?:developer|engineer|backend|programmer)\b", title_lower) or re.search(r"\b(?:backend|software)\s+engineer\s+-\s+go\b", title_lower):
                             continue
 
-                        # Click card to populate currentJobId
-                        span.click()
+                        # Determine direct job URL and ID from card link or currentJobId
+                        card_link = card_container.locator("a[href*='/jobs/view/'], a[href*='currentJobId=']").first
+                        href_attr = ""
+                        try:
+                            if card_link.is_visible(timeout=500):
+                                href_attr = card_link.get_attribute("href") or ""
+                        except Exception:
+                            pass
+
+                        # Click card to populate currentJobId / right pane
+                        try:
+                            if href_attr:
+                                card_link.click()
+                            else:
+                                span.click()
+                        except Exception:
+                            span.click()
                         page.wait_for_timeout(1000)
+
+                        # Determine direct URL
+                        m = re.search(r"(?:currentJobId=|/jobs/view/)(\d+)", href_attr or page.url)
+                        job_id_num = m.group(1) if m else ""
+                        direct_url = f"https://www.linkedin.com/jobs/view/{job_id_num}/" if job_id_num else page.url
+                        clean_url = direct_url.split("?")[0]
+
+                        if clean_url in seen_urls_linkedin:
+                            continue
+                        seen_urls_linkedin.add(clean_url)
 
                         # Check if right pane indicates expired/closed applications
                         try:
@@ -768,25 +793,39 @@ class JobDiscoveryEngine:
                         except Exception:
                             pass
 
+                        # Expand 'See more' if present on right pane
+                        try:
+                            see_more_btn = page.locator("button.jobs-description__footer-button, button[aria-label*='Show more'], button[aria-label*='See more']").first
+                            if see_more_btn.is_visible(timeout=800):
+                                see_more_btn.click()
+                                page.wait_for_timeout(300)
+                        except Exception:
+                            pass
+
                         # Attempt to extract full JD text from right pane
                         desc_text = f"{title} at {company} ({location}) on LinkedIn."
                         try:
-                            desc_elem = page.locator("#job-details, div.jobs-description-content__text, div.jobs-box__html-content").first
+                            desc_elem = page.locator("#job-details, article.jobs-description__container, div.jobs-description-content__text, div.jobs-box__html-content, .jobs-description__content").first
                             if desc_elem.is_visible(timeout=2500):
                                 extracted_txt = desc_elem.inner_text().strip()
-                                if len(extracted_txt) > 30:
+                                if len(extracted_txt) > 60:
                                     desc_text = extracted_txt
                         except Exception:
                             pass
 
-                        m = re.search(r"currentJobId=(\d+)", page.url)
-                        job_id_num = m.group(1) if m else ""
-                        direct_url = f"https://www.linkedin.com/jobs/view/{job_id_num}/" if job_id_num else page.url
-                        clean_url = direct_url.split("?")[0]
-
-                        if clean_url in seen_urls_linkedin:
-                            continue
-                        seen_urls_linkedin.add(clean_url)
+                        # Robust Fallback: If description text was not loaded from the pane, load direct URL in tab
+                        if len(desc_text) < 100 and job_id_num:
+                            try:
+                                d_page = context.new_page()
+                                d_page.goto(clean_url, wait_until="domcontentloaded", timeout=12000)
+                                d_elem = d_page.locator("#job-details, article.jobs-description__container, .show-more-less-html__markup, .jobs-description__content").first
+                                if d_elem.is_visible(timeout=3000):
+                                    d_txt = d_elem.inner_text().strip()
+                                    if len(d_txt) > 80:
+                                        desc_text = d_txt
+                                d_page.close()
+                            except Exception:
+                                pass
 
                         job_id = hashlib.sha256(f"linkedin:{title}:{company}".encode()).hexdigest()[:16]
                         if is_known_job(job_id, clean_url):
