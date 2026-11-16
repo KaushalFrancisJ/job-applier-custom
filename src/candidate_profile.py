@@ -39,6 +39,30 @@ class CandidateProfile:
     skills: Dict[str, List[str]] = field(default_factory=dict)
     highlights: List[str] = field(default_factory=list)
 
+    def to_matcher_context(self) -> str:
+        """
+        Produces a rich, structured textual summary of the candidate's verified profile,
+        experience limits, and technical accomplishments for LLM JD matching.
+        """
+        highlights_txt = "\n".join(f"- {h}" for h in self.highlights) if self.highlights else "- Senior Associate with 19 months (~1.5 yrs) fullstack and GenAI experience."
+        projects_txt = "\n".join(
+            f"- {p.title} ({', '.join(p.stack)}): {'; '.join(p.description[:2])}"
+            for p in self.projects
+        ) if self.projects else "- NVIDIA NIM MCP Desktop Coding Agent; Enterprise RAG with PgVector & AWS Bedrock."
+
+        return (
+            f"Candidate: {self.name}\n"
+            f"Current Role: {self.current_role} at {self.current_company}\n"
+            f"Location: {self.location}\n"
+            f"Total Experience: 19 months (~1.5 years). Upper limit for job applications: 2-3 years. "
+            f"Strictly exclude jobs requiring 4+ years of experience.\n"
+            f"Core Technical Stack: Python (FastAPI, Django), TypeScript, JavaScript (Node.js, Express, Next.js, React), "
+            f"PostgreSQL/PgVector, Redis, Docker, AWS (Bedrock, Lambda, SQS), Model Context Protocol (MCP).\n"
+            f"Target Roles: Applied AI / GenAI Engineer, AI Full Stack Engineer, Full Stack Engineer, Backend Engineer, Agentic Systems Engineer.\n"
+            f"Verified Accomplishments:\n{highlights_txt}\n"
+            f"Key Production Repositories:\n{projects_txt}"
+        )
+
 
 def load_candidate_profile(config_data: dict, cv_path: Path) -> CandidateProfile:
     cand_info = config_data.get("candidate", {})

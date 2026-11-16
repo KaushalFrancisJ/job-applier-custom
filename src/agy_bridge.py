@@ -53,20 +53,40 @@ class AgyBridge:
         )
         return self.ask(prompt)
 
-    def evaluate_role_fit(self, title: str, description: str, candidate_summary: str) -> Optional[dict]:
+    def evaluate_role_fit(
+        self,
+        title: str,
+        description: str,
+        candidate_summary: str,
+        company: str = "",
+        location: str = "",
+        timeout_seconds: int = 35,
+    ) -> Optional[dict]:
         """
-        Uses agy to perform nuanced role evaluation when regex matching is borderline.
+        Uses agy to perform nuanced role evaluation matching the full JD against candidate profile.
+        Passes up to 3500 characters of the JD to ensure complete requirements, stack, and YOE context.
         """
+        jd_text = sanitize_unicode(description.strip())[:3500]
         prompt = (
-            f"You are an expert technical recruiter evaluating candidate fit.\n"
-            f"Role: {title}\n"
-            f"Description: {description[:400]}\n"
-            f"Candidate Profile: {candidate_summary}\n\n"
-            f"Evaluate if this candidate (Applied GenAI, RAG, MCP, Python, TypeScript, Fullstack) "
-            f"should apply. Reply strictly with valid JSON only in format: "
-            f'{{"is_match": true, "score": 85, "reason": "short explanation"}}'
+            f"You are an expert technical hiring evaluator. Match this job description against the candidate's verified profile.\n\n"
+            f"--- CANDIDATE PROFILE ---\n"
+            f"{candidate_summary}\n\n"
+            f"--- JOB DETAILS ---\n"
+            f"Company: {company or 'Undisclosed'}\n"
+            f"Title: {title}\n"
+            f"Location: {location or 'Not specified'}\n"
+            f"Job Description:\n{jd_text}\n\n"
+            f"--- EVALUATION INSTRUCTIONS ---\n"
+            f"Evaluate if this candidate is genuinely a strong fit for this role:\n"
+            f"1. Experience Match: Candidate has 19 months (~1.5 yrs) experience and target is 0-3 YOE. "
+            f"   If JD strictly requires 4+ years of experience, REJECT (is_match: false).\n"
+            f"2. Tech Stack Match: Candidate specializes in Python, TypeScript, Node.js, Next.js, React, RAG, PgVector, Bedrock, and MCP. "
+            f"   If JD mandates foreign backend languages (e.g. Go, Java, C++, C#, Rust, Ruby, PHP) with NO Python/TS/Node alternative, REJECT (is_match: false).\n"
+            f"3. Role Relevance: Strong alignment with Applied AI/GenAI, Agentic Systems, Full Stack, or Backend engineering. Reject pure research/PhD math.\n\n"
+            f"Reply strictly with a valid JSON object only (no markdown fences, no extra text):\n"
+            f'{{"is_match": true, "score": 85, "reason": "concise 1-2 sentence explanation of match or why rejected"}}'
         )
-        resp = self.ask(prompt)
+        resp = self.ask(prompt, timeout_seconds=timeout_seconds)
         if not resp:
             return None
         try:
@@ -75,6 +95,14 @@ class AgyBridge:
                 clean = clean.split("```json")[1].split("```")[0].strip()
             elif "```" in clean:
                 clean = clean.split("```")[1].split("```")[0].strip()
-            return json.loads(clean)
-        except Exception:
+            data = json.loads(clean)
+            if "is_match" in data and "score" in data:
+                return {
+                    "is_match": bool(data["is_match"]),
+                    "score": float(data["score"]),
+                    "reason": str(data.get("reason", "")).strip(),
+                }
+            return None
+        except Exception as e:
+            logger.warning(f"[AgyBridge] Failed to parse evaluate_role_fit JSON: {e}")
             return None

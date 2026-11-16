@@ -4,12 +4,15 @@ Evaluates JDs against candidate background, filters out pure theoretical ML role
 and generates customized application pitches highlighting relevant GitHub projects.
 """
 from dataclasses import dataclass
+import logging
 import re
 from typing import Dict, List, Optional, Tuple
 
 from src.agy_bridge import AgyBridge
 from src.candidate_profile import CandidateProfile
 from src.utils import sanitize_unicode
+
+logger = logging.getLogger("matcher")
 
 
 @dataclass
@@ -56,6 +59,11 @@ class JobMatcher:
         ]
         self.min_salary_lpa = float(self.prefs.get("expected_ctc_lpa", 10.0))
         self.agy = AgyBridge(effort="low")
+        self.candidate_summary = (
+            self.profile.to_matcher_context()
+            if hasattr(self.profile, "to_matcher_context")
+            else ""
+        )
 
     def evaluate_job(
         self,
@@ -353,6 +361,33 @@ class JobMatcher:
                 reason=f"Low relevance score ({score:.1f}/100). JD does not sufficiently align with Applied AI/Fullstack/Backend.",
             )
 
+        # Stage 2: Deep Semantic Evaluation via AgyBridge
+        # Matches the full JD (up to 3500 chars) against the candidate's verified profile, experience limits, and projects.
+        match_reason = f"High match ({score:.1f}/100). Aligned with {', '.join((genai_hits + all_tech_hits)[:4])}."
+        if self.agy and self.candidate_summary and len(description.strip()) >= 100:
+            try:
+                agy_eval = self.agy.evaluate_role_fit(
+                    title=title,
+                    description=description,
+                    candidate_summary=self.candidate_summary,
+                    company=company,
+                    location=location,
+                    timeout_seconds=30,
+                )
+                if agy_eval:
+                    if not agy_eval.get("is_match", True):
+                        return MatchResult(
+                            is_match=False,
+                            score=float(agy_eval.get("score", 30.0)),
+                            reason=f"AgyBridge Evaluation: {agy_eval.get('reason', 'Role requirements misaligned with candidate profile.')}",
+                        )
+                    # Enrich score and rationale with AgyBridge evaluation
+                    agy_score = float(agy_eval.get("score", score))
+                    score = max(score, agy_score)
+                    match_reason = f"Matched ({score:.0f}% - AgyBridge verified): {agy_eval.get('reason', '')}"
+            except Exception as e:
+                logger.warning(f"[Matcher] AgyBridge evaluate_role_fit fallback: {e}")
+
         # 5. Check if manual action is required
         action_required = False
         action_notes = []
@@ -382,7 +417,7 @@ class JobMatcher:
         return MatchResult(
             is_match=True,
             score=min(score, 98.0),
-            reason=f"High match ({score:.1f}/100). Aligned with {', '.join((genai_hits + all_tech_hits)[:4])}.",
+            reason=match_reason,
             action_required=action_required,
             action_notes="; ".join(action_notes),
             pitch_note=pitch,
