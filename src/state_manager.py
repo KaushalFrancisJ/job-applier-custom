@@ -87,8 +87,8 @@ class StateManager:
                             for k, v in disk_data.items():
                                 if k not in self.jobs:
                                     self.jobs[k] = v
-                                elif v.get("status") == "FILTERED_OUT" and self.jobs[k].get("status") != "FILTERED_OUT":
-                                    # Always honor manual/external filter decisions
+                                elif v.get("status") in ("APPLIED", "EXPIRED", "FILTERED_OUT") and self.jobs[k].get("status") != v.get("status"):
+                                    # Always honor manual/disk candidate decisions (APPLIED, EXPIRED, FILTERED_OUT)
                                     self.jobs[k] = v
                 except Exception:
                     pass
