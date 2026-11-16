@@ -163,19 +163,24 @@ class JobApplierEngine:
                 action_note = eval_res.action_notes
                 if raw_job.platform == "linkedin":
                     action_note = f"LinkedIn Smart Shortlist ({eval_res.score:.0f}% match): Pre-drafted pitch ready. Click link to apply safely."
+                
+                target_url = eval_res.extracted_external_url or raw_job.external_url or raw_job.url
+                ext_url = eval_res.extracted_external_url or raw_job.external_url or ""
+
                 record = JobRecord(
                     job_id=job_id,
                     title=raw_job.title,
                     company=raw_job.company,
                     location=raw_job.location,
                     salary=raw_job.salary,
-                    url=raw_job.external_url or raw_job.url,
+                    url=target_url,
                     platform=raw_job.platform,
                     status="ACTION_REQUIRED",
                     applied_at=now_str,
                     pitch_note=eval_res.pitch_note,
                     action_notes=action_note,
                     match_score=eval_res.score,
+                    external_url=ext_url,
                 )
                 if not self.dry_run:
                     self.state_mgr.record_job(record)

@@ -20,6 +20,15 @@ class MatchResult:
     action_required: bool = False
     action_notes: str = ""
     pitch_note: str = ""
+    extracted_external_url: Optional[str] = None
+
+
+ATS_FORM_REGEX = re.compile(
+    r"(https?://(?:forms\.gle|docs\.google\.com/forms|tally\.so/r/|typeform\.com|jobs\.lever\.co|"
+    r"boards\.greenhouse\.io|job-boards\.greenhouse\.io|jobs\.ashbyhq\.com|notion\.site/[^\s]+|"
+    r"airtable\.com/[^\s]+|applytojob\.com|bamboohr\.com|myworkdayjobs\.com)[^\s\)\"\'>]+)",
+    re.IGNORECASE,
+)
 
 
 class JobMatcher:
@@ -186,10 +195,21 @@ class JobMatcher:
         # 5. Check if manual action is required
         action_required = False
         action_notes = []
+        extracted_ext_url = None
 
         if external_url and not any(plat in external_url for plat in ["wellfound.com", "linkedin.com", "naukri.com"]):
             action_required = True
             action_notes.append(f"External ATS application URL: {external_url}")
+            extracted_ext_url = external_url
+
+        # Case 2: Scan JD description text for embedded ATS / application form links
+        embedded_form_links = ATS_FORM_REGEX.findall(description)
+        if embedded_form_links:
+            clean_link = embedded_form_links[0].rstrip(".,;)")
+            action_required = True
+            action_notes.append(f"JD contains external application form: {clean_link}")
+            if not extracted_ext_url:
+                extracted_ext_url = clean_link
 
         if has_custom_questions or any(q in desc_lower for q in ["take-home assignment", "coding challenge link", "submit a loom video", "github repo with proof of work"]):
             action_required = True
@@ -205,6 +225,7 @@ class JobMatcher:
             action_required=action_required,
             action_notes="; ".join(action_notes),
             pitch_note=pitch,
+            extracted_external_url=extracted_ext_url,
         )
 
     def _check_salary(self, salary_str: str) -> Tuple[bool, str]:
