@@ -104,17 +104,27 @@ The engine does not blindly crawl the web, nor does it simply refresh a static p
   $$\text{job\_id} = \text{SHA256}(\text{platform} + \text{title} + \text{company})[:16]$$
 * **URL & ID Matching:** Checks both `job_id` and normalized URL against `state/applications.json` in `0.001s` (`skipped_known += 1`). You will never double-apply or waste actions on previously seen roles across any portal.
 
-### Stage 3: Strict Guardrails & Matcher Scoring
-The matcher ([`src/matcher.py`](src/matcher.py)) evaluates the role substance beyond surface titles:
-* **Discipline Match:** Prioritizes Applied AI, Generative AI, Agentic Systems, Python/FastAPI Backend, and Fullstack Engineering.
-* **Hard Negative Filter:** Skips pure theoretical ML, PhD research, deep learning math derivations, and CUDA kernel development from scratch. Also excludes manual QA, IT support, and telecom roles.
-* **Compensation Floor:** Strictly enforces **≥ 10 LPA INR** (or competitive market standard). Roles offering below ₹10 LPA (e.g. ₹3L – ₹8L) are automatically rejected.
-* **Indian Roles Only:** Rejects US/EU companies requiring foreign work authorization.
+### Stage 3: Two-Stage Hybrid Matching Engine (Referencing career-ops)
+The system adopts the two-stage evaluation architecture inspired by `career-ops` (`modes/scan.md` + `modes/oferta.md`):
+
+1. **Stage 1: Scanner Pre-checks (Fast Deterministic Pruning, < 1ms)**
+   - **Incomplete JD Guardrail:** Instantly rejects synthetic fallback snippets (e.g. `"{title} at {company} on LinkedIn"`) or descriptions `< 80` chars where requirements cannot be verified.
+   - **YOE Gating Policy:** Candidate has **19 months (~1.5 years)** of experience with an upper limit of **2–3 years**. Roles requiring **≥ 4 years** are strictly disqualified. "Senior" titles are permitted *only* if stated YOE is ≤ 3 years or unspecified.
+   - **Executive Tier Exclusions:** Skips high corporate tiers: Director, VP, Chief, Head of, Staff Engineer, Principal, and Senior II/III/Manager.
+   - **Foreign Language Gate:** Rejects roles mandating foreign backend languages (Go, Java, C++, C#, Rust, Ruby, PHP, Scala) unless Python, TypeScript, or Node.js is an accepted alternative.
+   - **Compensation Floor:** Strictly enforces **≥ 10 LPA INR** (or competitive market standard). Roles explicitly below ₹10 LPA are rejected.
+   - **Location Gate:** Strictly limits to India or Remote within India; rejects overseas entities requiring foreign work authorization.
+
+2. **Stage 2: Matcher Semantic Evaluation (Direct cv.md-to-JD Comparison via AgyBridge)**
+   - For listings that pass Stage 1, the matcher passes the **raw `cv.md` file** and up to **3,500 characters of the full JD** to `AgyBridge.evaluate_role_fit()`.
+   - Google Antigravity CLI evaluates the candidate's verified achievements (+40% enterprise RAG accuracy gain with AWS Bedrock Titan & PgVector, NVIDIA NIM Desktop Coding Agent with MCP streaming, HabitFlow API) directly against the company's requirements in `cv.md`.
+   - Outputs a validated decision (`is_match`, `score`, and `reason`).
+   - **Resilient Fallback:** If `agy` times out or is offline, the matcher gracefully falls back to deterministic keyword scoring so that zero jobs are blocked or dropped.
 
 ### Stage 4: Hybrid Bespoke Pitch Synthesis (agy CLI + Vectored Fallback)
 The engine creates outbound application pitches using a hybrid two-tier approach:
-1. **Bespoke CLI Synthesis (`agy -p`):** For matched roles and YC founder notes, the engine invokes the local Antigravity CLI non-interactively to generate a 3-sentence, hyper-personalized pitch connecting the specific company's product mission to your verified projects and metrics (+40% RAG accuracy gain, MCP Coding Agent, HabitFlow).
-2. **Deterministic Vectored Fallback:** If `agy` is offline or exceeds a 15-second timeout, the engine instantaneously falls back to deterministic rule-based templates:
+1. **Bespoke CLI Synthesis (`agy -p`):** For matched roles and YC founder notes, the engine invokes the local Antigravity CLI non-interactively (with a 30s timeout and up to 1500 chars JD context) to generate a 3-sentence, hyper-personalized pitch connecting the specific company's product mission to your verified projects and metrics (+40% RAG accuracy gain, MCP Coding Agent, HabitFlow).
+2. **Deterministic Vectored Fallback:** If `agy` is offline or exceeds its timeout, the engine instantaneously falls back to deterministic rule-based templates:
    * **If JD highlights RAG / Vector DBs:** Cites 40% RAG accuracy gain at Payday Suite using AWS Bedrock Titan embeddings, PgVector, and Groq LLM evaluation.
    * **If JD highlights Agents / Python / Tool-calling:** Cites your [NVIDIA NIM Desktop Coding Agent with MCP](https://github.com/KaushalFrancisJ/Coding-agent-nvidia).
    * **If JD highlights Fullstack / Backend / APIs:** Cites your [HabitFlow Production API](https://github.com/KaushalFrancisJ/Habit-Formation-Application) (Node.js/TypeScript/Redis) and FastAPI architectures.

@@ -469,22 +469,23 @@ class JobMatcher:
         """
         Hybrid Pitch Synthesis:
         1. Attempts bespoke synthesis via `agy` CLI connecting Kaushal's verified metrics & MCP/RAG
-           repos to the company's specific mission.
+           repos to the company's specific mission. Uses 30s timeout and up to 1500 chars JD context.
         2. Falls back instantly to deterministic vectored templates if agy times out or is offline.
         """
-        if company and self.agy:
+        comp_name = company.strip() if company and company.strip() else "your team"
+        if self.agy:
             try:
                 prompt = (
-                    f"You are Kaushal Francis J applying to {company} for the role of {title}.\n"
-                    f"Candidate Background: Senior Associate at Payday Suite, improved enterprise RAG accuracy by 40% "
+                    f"You are Kaushal Francis J applying to {comp_name} for the role of {title}.\n"
+                    f"Candidate Background: Senior Associate at Payday Suite (4i apps), improved enterprise RAG accuracy by 40% "
                     f"with AWS Bedrock Titan + PgVector, built open-source NVIDIA NIM Desktop Coding Agent with Model Context Protocol (MCP) "
                     f"and async streaming (github.com/KaushalFrancisJ/Coding-agent-nvidia), and built production HabitFlow API (Redis/Docker).\n"
-                    f"Job Description Context: {desc[:400]}\n\n"
+                    f"Job Description Context: {desc[:1500]}\n\n"
                     f"Write a punchy, authentic 3-sentence application note to the hiring team. "
                     f"Connect your actual project experience directly to their specific product/mission, cite the +40% metric or MCP repo, "
                     f"and keep it under 65 words. No placeholders."
                 )
-                bespoke = self.agy.ask(prompt, timeout_seconds=15)
+                bespoke = self.agy.ask(prompt, timeout_seconds=30)
                 if bespoke and len(bespoke) > 40 and not bespoke.startswith("Error"):
                     return sanitize_unicode(bespoke)
             except Exception as e:

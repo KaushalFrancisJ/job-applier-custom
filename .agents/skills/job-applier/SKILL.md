@@ -23,6 +23,8 @@ This skill provides the end-to-end runbook for automating job applications acros
 * **GitHub:** [github.com/kaushalfrancisj](https://github.com/kaushalfrancisj)
 * **Resume PDF:** `Kaushal_Francis_J_res.pdf` (located at workspace root)
 * **Base Markdown CV:** `cv.md`
+* **Verified Experience:** 19 months (~1.5 years). Upper limit for applications: 2–3 years. Strictly disqualify roles requiring ≥ 4 years.
+* **Seniority Rule:** Senior titles are acceptable *only* if required YOE is ≤ 3 years or unspecified. Never reject solely because "Senior" is in the title, but always reject if stated YOE is ≥ 4 years.
 
 ### Key Projects for Pitch Tailoring
 1. **[NVIDIA NIM Desktop Coding Agent](https://github.com/KaushalFrancisJ/Coding-agent-nvidia):** Python, Flet, AsyncOpenAI, Model Context Protocol (MCP), LLM streaming JSON buffers. Packaged Windows binary release: [Release v0.0.0](https://github.com/KaushalFrancisJ/Coding-agent-nvidia/releases/tag/v0.0.0).
@@ -91,6 +93,17 @@ This skill provides the end-to-end runbook for automating job applications acros
      - **Instahyre:** Navigates opportunity pages (`?page=2`).
    * **Safety Ceiling:** Each platform has a hard ceiling (`max_pages_per_platform = 4`) to prevent infinite scraping while ensuring fresh jobs are always uncovered.
    * **Dual-Key Deduplication:** Checks both canonical SHA256 hashes and normalized URLs against `state/applications.json` in real time before and during scraping.
+8. **Two-Stage Hybrid Evaluation Engine (Referencing career-ops Architecture):**
+   * **Stage 1: Fast Scanner Pre-checks (< 1ms, zero token cost):**
+     - *Incomplete JD Guardrail:* Excludes synthetic/truncated snippets (`< 80` chars or `"... on LinkedIn."`).
+     - *YOE Filter:* Enforces 19 months experience baseline (0–3 YOE). Hard excludes roles requiring ≥ 4 years.
+     - *Corporate Tier Exclusions:* Excludes Director, VP, Chief, Staff Engineer, Principal, and Senior II/III.
+     - *Foreign Backend Language Gate:* Excludes roles mandating pure Go, Java, C++, C#, Rust, Ruby, PHP without candidate stack.
+     - *Location & CTC Gate:* Enforces India/Remote India only and minimum ₹10 LPA cash salary.
+   * **Stage 2: Deep Matcher Semantic Evaluation (Direct `cv.md`-to-JD Comparison):**
+     - For jobs surviving Stage 1, evaluates the raw text of `cv.md` against up to 3,500 characters of the JD via `AgyBridge.evaluate_role_fit()`.
+     - Validates technical alignment against Kaushal's verified production RAG (+40% accuracy), MCP agent streaming, and fullstack APIs.
+     - Seamlessly falls back to deterministic tech scoring if the CLI times out or is offline.
 
 ---
 
@@ -151,8 +164,8 @@ open_browser.bat
 
 ## 📝 Pitch Generation Strategy: Hybrid Bespoke Synthesis
 
-1. **Bespoke CLI Generation (`agy -p`):** For matched roles, the engine calls `agy` non-interactively to generate a 3-sentence, tailored pitch referencing the company's specific mission, Kaushal's +40% RAG accuracy gain, or his NVIDIA NIM MCP Coding Agent repository.
-2. **Deterministic Vectored Fallback:** If `agy` takes longer than 15s or is unavailable, it immediately falls back to verified templates:
+1. **Bespoke CLI Generation (`agy -p`):** For matched roles, the engine calls `agy` non-interactively (with a 30s timeout and up to 1500 chars JD context) to generate a 3-sentence, tailored pitch referencing the company's specific mission, Kaushal's +40% RAG accuracy gain, or his NVIDIA NIM MCP Coding Agent repository.
+2. **Deterministic Vectored Fallback:** If `agy` takes longer than 30s or is unavailable, it immediately falls back to verified templates:
    * **If JD highlights RAG / Vector DBs:** Cite 40% RAG accuracy gain with AWS Bedrock Titan + PgVector + Groq LLM evaluation.
    * **If JD highlights Agents / Python / Tool-calling:** Cite NVIDIA NIM Desktop Coding Agent with MCP integration.
    * **If JD highlights Fullstack / Backend / APIs:** Cite Next.js + FastAPI + HabitFlow Redis architecture.

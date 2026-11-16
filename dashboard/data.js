@@ -4001,10 +4001,10 @@ window.INITIAL_APPLICATIONS_DATA = {
     "salary": "Competitive",
     "url": "https://www.linkedin.com/jobs/view/4489717938/",
     "platform": "linkedin",
-    "status": "APPLIED",
+    "status": "FILTERED_OUT",
     "applied_at": "2026-11-16T18:01:00",
     "pitch_note": "At Payday Suite, I improved enterprise RAG retrieval accuracy by 40% using AWS Bedrock and PgVector, and recently open-sourced an async desktop coding assistant leveraging NVIDIA NIM and Model Context Protocol (MCP). I would love to bring this hands-on LLM orchestration and vector search expertise to scale MyCareernet's AI-driven recruitment matching pipelines. Let's connect!",
-    "action_notes": "Candidate applied directly via LinkedIn (Note: JD specifies 5+ YOE).",
+    "action_notes": "Excluded high YOE requirement: JD specifies 5+ years of experience (target: 0-3 YOE, candidate has 19 months).",
     "match_score": 75.0,
     "external_url": "https://www.linkedin.com/jobs/view/4489717938/"
   },
@@ -4091,10 +4091,10 @@ window.INITIAL_APPLICATIONS_DATA = {
     "salary": "Competitive",
     "url": "https://www.linkedin.com/jobs/view/4489752212/",
     "platform": "linkedin",
-    "status": "ACTION_REQUIRED",
+    "status": "FILTERED_OUT",
     "applied_at": "2026-11-16T18:00:49.693264",
     "pitch_note": "At Payday Suite, I engineered enterprise Python/Node.js microservices and improved RAG accuracy by 40% utilizing AWS Bedrock Titan with PgVector. Recently, I authored an open-source Desktop Coding Agent integrating NVIDIA NIM with Model Context Protocol (MCP) for async streaming. I am eager to bring this dual API and GenAI expertise on-site to scale Vtricks Technologies' intelligent application ecosystems.",
-    "action_notes": "LinkedIn Smart Shortlist (89% match): Pre-drafted pitch ready. Click link to apply safely.",
+    "action_notes": "Excluded high YOE requirement: JD specifies 5+ years of experience (target: 0-3 YOE, candidate has 19 months).",
     "match_score": 89.0,
     "external_url": "https://www.linkedin.com/jobs/view/4489752212/"
   },
@@ -4141,6 +4141,36 @@ window.INITIAL_APPLICATIONS_DATA = {
     "pitch_note": "",
     "action_notes": "Excluded: JD does not require candidate's core stack (Python, TypeScript, Node.js, FastAPI, Next.js, or GenAI/LLMs).",
     "match_score": 35.0,
+    "external_url": ""
+  },
+  "10e0d7fb574753b3": {
+    "job_id": "10e0d7fb574753b3",
+    "title": "Software Dev Engineer II, Profit Intelligence",
+    "company": "Amazon",
+    "location": "Chennai",
+    "salary": "Competitive",
+    "url": "https://www.linkedin.com/jobs/view/4457379115/",
+    "platform": "linkedin",
+    "status": "FILTERED_OUT",
+    "applied_at": "2026-11-16T18:17:22.797957",
+    "pitch_note": "",
+    "action_notes": "Excluded: JD does not require candidate's core stack (Python, TypeScript, Node.js, FastAPI, Next.js, or GenAI/LLMs).",
+    "match_score": 35.0,
+    "external_url": ""
+  },
+  "e33e3f7536e712ec": {
+    "job_id": "e33e3f7536e712ec",
+    "title": "Lead Python Developer",
+    "company": "iBytes Bits and Bots Private Limited",
+    "location": "Velachery (On-site)",
+    "salary": "Competitive",
+    "url": "https://www.linkedin.com/jobs/view/4490255923/",
+    "platform": "linkedin",
+    "status": "FILTERED_OUT",
+    "applied_at": "2026-11-16T18:17:22.816124",
+    "pitch_note": "",
+    "action_notes": "Location mismatch: 'Velachery (On-site)' is not an India-based or India-eligible role.",
+    "match_score": 30.0,
     "external_url": ""
   }
 };
