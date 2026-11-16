@@ -4172,5 +4172,35 @@
     "action_notes": "Location mismatch: 'Velachery (On-site)' is not an India-based or India-eligible role.",
     "match_score": 30.0,
     "external_url": ""
+  },
+  "d5db426745452d4d": {
+    "job_id": "d5db426745452d4d",
+    "title": "Manager Software Development",
+    "company": "Appian",
+    "location": "Chennai (On-site)",
+    "salary": "Competitive",
+    "url": "https://www.linkedin.com/jobs/view/4491299568/",
+    "platform": "linkedin",
+    "status": "FILTERED_OUT",
+    "applied_at": "2026-11-16T18:38:38.007195",
+    "pitch_note": "",
+    "action_notes": "Excluded: JD does not require candidate's core stack (Python, TypeScript, Node.js, FastAPI, Next.js, or GenAI/LLMs).",
+    "match_score": 35.0,
+    "external_url": ""
+  },
+  "hirist_1682991": {
+    "job_id": "hirist_1682991",
+    "company": "Mobifly",
+    "title": "AI Programmer - Large Language Model & Document Parsing",
+    "location": "Multiple Locations, India",
+    "salary": "Competitive / Undisclosed",
+    "url": "https://www.hirist.tech/j/mobifly-ai-programmer-large-language-model-document-parsing-2-5-yrs-1682991",
+    "platform": "hirist",
+    "status": "APPLIED",
+    "applied_at": "2026-11-16T18:48:00",
+    "pitch_note": "Hi team, I saw your opening for AI Programmer - Large Language Model & Document Parsing at Mobifly. In my current role as Senior Associate at Payday Suite, I improved RAG response accuracy by 40% using AWS Bedrock Titan embeddings, PgVector, and engineered document ingestion pipelines for structured PDFs/Excel. I've also built an open-source Desktop Coding Agent using NVIDIA NIM and MCP (github.com/KaushalFrancisJ/Coding-agent-nvidia). I would love to bring this hands-on GenAI orchestration experience to Mobifly!",
+    "action_notes": "Application verified as submitted on Hirist (Status: Applied). Direct match with candidate's document parsing and enterprise RAG background.",
+    "match_score": 92.0,
+    "external_url": ""
   }
 }
