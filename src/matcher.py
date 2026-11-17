@@ -94,8 +94,8 @@ class JobMatcher:
         # If JD text is missing or just a synthetic 1-line fallback snippet (e.g. '{title} at {company} on LinkedIn')
         # we cannot reliably verify experience or tech requirements. Exclude to prevent blind approvals of 8+ YOE roles.
         is_synthetic_snippet = (
-            len(description.strip()) < 50 or
-            (description.strip().endswith("on linkedin.") and len(description.strip()) < 140 and not any(kw in desc_lower for kw in ["requirement", "skill", "experience", "year", "python", "react"]))
+            len(description.strip()) < 60 or
+            (description.strip().lower().endswith("on linkedin.") and len(description.strip()) < 160)
         )
         if is_synthetic_snippet:
             return MatchResult(
@@ -127,10 +127,12 @@ class JobMatcher:
         # NOTE: We do NOT blindly exclude 'Senior' titles — candidate has 19 months experience
         # and is a Senior Associate. Many teams hire 2-3 YOE engineers for Senior roles.
         # Filtering is strictly driven by the actual required YOE (upper limit: 3 years).
+        # We DO exclude 'Lead' and above (Tech Lead, Team Lead, Principal, Director, etc.).
         high_tier_title_exclusions = [
             "director", "vp", "vice president", "chief", "head of",
             "principal", "staff engineer", "staff software", "staff developer",
-            "senior ii", "senior 2", "senior iii", "senior 3", "senior manager"
+            "senior ii", "senior 2", "senior iii", "senior 3", "senior manager",
+            "lead", "tech lead", "team lead", "technical lead", "engineering lead"
         ]
         for ht_kw in high_tier_title_exclusions:
             pattern = rf"\b{re.escape(ht_kw)}\b"
@@ -164,8 +166,8 @@ class JobMatcher:
             )
 
         # 1d. YOE Filter (Candidate has 19 months experience; upper limit is 2-3 years, with tolerance for 2-4 ranges)
-        # Check title first for explicit high YOE (e.g. '5-7 yrs', '8+ yrs', '4+ years')
-        title_yoe_ranges = re.findall(r"\b(\d+)\s*(?:to|-|–)\s*(\d+)\+?\s*(?:years?|yrs?)\b", title_lower)
+        # Check title first for explicit high YOE (e.g. '5-7 yrs', '8+ yrs', '4+ years', '6+ yoe')
+        title_yoe_ranges = re.findall(r"\b(\d+)\s*(?:to|-|–)\s*(\d+)\+?\s*(?:years?|yrs?|yoe)\b", title_lower)
         for lower_y, upper_y in title_yoe_ranges:
             if int(lower_y) >= 4:
                 return MatchResult(
@@ -173,7 +175,7 @@ class JobMatcher:
                     score=20.0,
                     reason=f"Excluded high YOE in title: '{lower_y}-{upper_y} yrs' exceeds profile range (19 months, upper limit 2-3 YOE).",
                 )
-        title_single_yoe = re.findall(r"(?<![-–\dto]\s)(?<![-–\d])\b([4-9]|\d{2})\+?\s*(?:years?|yrs?)\b", title_lower)
+        title_single_yoe = re.findall(r"(?<![-–\dto]\s)(?<![-–\d])\b([4-9]|\d{2})\+?\s*(?:years?|yrs?|yoe)\b", title_lower)
         if title_single_yoe:
             min_t_exp = min(int(x) for x in title_single_yoe)
             if min_t_exp >= 4:
@@ -183,8 +185,8 @@ class JobMatcher:
                     reason=f"Excluded high YOE in title: specifies {min_t_exp}+ years of experience (target: 0-3 YOE).",
                 )
 
-        # Check description for ranges with lower bound >= 4 (e.g. '4-7 years', '6-10 years')
-        desc_yoe_ranges = re.findall(r"\b(\d+)\s*(?:to|-|–)\s*(\d+)\+?\s*(?:years?|yrs?)\b", desc_lower)
+        # Check description for ranges with lower bound >= 4 (e.g. '4-7 years', '6-10 years', '6-8 yoe')
+        desc_yoe_ranges = re.findall(r"\b(\d+)\s*(?:to|-|–)\s*(\d+)\+?\s*(?:years?|yrs?|yoe)\b", desc_lower)
         for lower_y, upper_y in desc_yoe_ranges:
             if int(lower_y) >= 4:
                 return MatchResult(
@@ -193,10 +195,10 @@ class JobMatcher:
                     reason=f"Excluded high YOE requirement: JD specifies {lower_y}-{upper_y} years of experience (target: 0-3 YOE).",
                 )
 
-        # Check description for single minimum numbers >= 4 (e.g. '4+ years', '5+ years', '8+ years of experience', 'minimum 5 years')
-        single_yoe_matches = re.findall(r"(?<![-–\dto]\s)(?<![-–\d])\b([4-9]|\d{2})\+?\s*(?:years?|yrs?)\b", desc_lower)
-        min_prefix_matches = re.findall(r"\b(?:minimum|min|at least|over)\s+([4-9]|\d{2})\+?\s*(?:years?|yrs?)\b", desc_lower)
-        exp_colon_matches = re.findall(r"\bexperience\s*[:\-]\s*([4-9]|\d{2})\+?\s*(?:years?|yrs?)\b", desc_lower)
+        # Check description for single minimum numbers >= 4 (e.g. '4+ years', '5+ years', '6+ yoe', '8+ years of experience', 'minimum 5 years')
+        single_yoe_matches = re.findall(r"(?<![-–\dto]\s)(?<![-–\d])\b([4-9]|\d{2})\+?\s*(?:years?|yrs?|yoe)\b", desc_lower)
+        min_prefix_matches = re.findall(r"\b(?:minimum|min|at least|over)\s+([4-9]|\d{2})\+?\s*(?:years?|yrs?|yoe)\b", desc_lower)
+        exp_colon_matches = re.findall(r"\bexperience\s*[:\-]\s*([4-9]|\d{2})\+?\s*(?:years?|yrs?|yoe)\b", desc_lower)
         all_yoe_single = single_yoe_matches + min_prefix_matches + exp_colon_matches
         if all_yoe_single:
             min_exp_found = min(int(x) for x in all_yoe_single)
