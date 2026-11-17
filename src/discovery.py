@@ -658,6 +658,13 @@ class JobDiscoveryEngine:
                 seen_urls_instahyre = set()
                 known_count_instahyre = 0
 
+                # Ensure Instahyre authentication using persistent profile
+                if hasattr(driver, "ensure_instahyre_logged_in"):
+                    try:
+                        driver.ensure_instahyre_logged_in(page)
+                    except Exception as auth_e:
+                        logger.warning(f"[Discovery] Instahyre auth verification warning: {auth_e}")
+
                 for page_idx in range(1, max_pages + 1):
                     insta_url = "https://www.instahyre.com/candidate/opportunities/?matching=true" if page_idx == 1 else f"https://www.instahyre.com/candidate/opportunities/?matching=true&page={page_idx}"
                     try:
@@ -667,13 +674,23 @@ class JobDiscoveryEngine:
                         logger.warning(f"[Discovery] Instahyre navigation warning on page {page_idx}: {nav_e}")
                         break
 
-                    cards = page.locator("a[href*='/job-']").all()
+                    cards = page.locator("a[href*='/job-'], div.opportunity-card, div.job-item, div[ng-repeat*='opportunity']").all()
                     if not cards:
+                        # Fallback: check if page has opportunity links or is redirected to login
+                        if "login" in page.url.lower():
+                            print(f"  ⚠️ [Instahyre] Session redirected to login. Skipping unauthenticated pass.")
+                            break
+                        print(f"  📄 [Instahyre Page {page_idx}/{max_pages}] No new opportunity cards found. (URL: {page.url})")
                         break
 
                     for a in cards:
                         try:
+                            # If container div matched, locate inner link
                             href = a.get_attribute("href")
+                            if not href or "/job-" not in href:
+                                inner_a = a.locator("a[href*='/job-']").first
+                                if inner_a.count() > 0:
+                                    href = inner_a.get_attribute("href")
                             text = a.inner_text().strip()
                             if not href or not text or len(text) < 5:
                                 continue
@@ -718,7 +735,205 @@ class JobDiscoveryEngine:
                 logger.warning(f"[Discovery] Dynamic Instahyre sweep warning: {e}")
 
             # ----------------------------------------------------
-            # 4. Dynamic LinkedIn Discovery (Smart Shortlist)
+            # 4. Dynamic Cutshort Discovery (Option B Quota Pagination)
+            # ----------------------------------------------------
+            try:
+                unexplored_cutshort = []
+                seen_urls_cutshort = set()
+                known_count_cutshort = 0
+
+                # Ensure Cutshort authentication
+                if hasattr(driver, "ensure_cutshort_logged_in"):
+                    try:
+                        driver.ensure_cutshort_logged_in(page)
+                    except Exception as auth_e:
+                        logger.warning(f"[Discovery] Cutshort auth verification warning: {auth_e}")
+
+                cutshort_sources = [
+                    "https://cutshort.io/profile/all-jobs",
+                    "https://cutshort.io/profile/recommended-jobs",
+                    "https://cutshort.io/jobs?search=AI%20Engineer&locations=Bangalore,Chennai,Remote",
+                    "https://cutshort.io/jobs/software-engineer-jobs?locations=Bangalore,Chennai,Remote",
+                ]
+
+                max_cs_steps = min(len(cutshort_sources), max_pages)
+
+                for step_idx in range(1, max_cs_steps + 1):
+                    cs_url = cutshort_sources[step_idx - 1]
+                    try:
+                        page.goto(cs_url, wait_until="domcontentloaded", timeout=25000)
+                        page.wait_for_timeout(2500)
+                        # Scroll down to load more cards
+                        page.evaluate("window.scrollBy(0, 2000)")
+                        page.wait_for_timeout(1000)
+                    except Exception as nav_e:
+                        logger.warning(f"[Discovery] Cutshort navigation warning on step {step_idx} ({cs_url}): {nav_e}")
+                        continue
+
+                    # Match job links on Cutshort
+                    cards = page.locator("a[href*='/job/'], a[href*='/job-']").all()
+                    if not cards:
+                        continue
+
+                    for a in cards:
+                        try:
+                            href = a.get_attribute("href")
+                            text = a.inner_text().strip()
+                            if not href or not text or len(text) < 10:
+                                continue
+                            # Exclude navigation/utility links
+                            if any(x in href.lower() for x in ["/job-alerts", "/post-a-job", "/saved", "/applied"]):
+                                continue
+
+                            full_url = href if href.startswith("http") else f"https://cutshort.io{href}"
+                            clean_url = full_url.split("?")[0]
+                            if clean_url in seen_urls_cutshort:
+                                continue
+                            seen_urls_cutshort.add(clean_url)
+
+                            lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+                            title = lines[0] if lines else "Software Engineer"
+                            company = lines[1] if len(lines) > 1 else "Tech Startup"
+
+                            job_id = hashlib.sha256(f"cutshort:{title}:{company}".encode()).hexdigest()[:16]
+                            if is_known_job(job_id, clean_url):
+                                known_count_cutshort += 1
+                                continue
+
+                            salary = "Competitive"
+                            location = "Bangalore"
+                            for ln in lines[1:]:
+                                if any(tok in ln.lower() for tok in ["lpa", "lacs", "lac", "₹", "/ yr", "$"]):
+                                    salary = ln
+                                if any(loc in ln.lower() for loc in ["bangalore", "remote", "chennai", "hyderabad", "pune", "delhi", "mumbai", "gurgaon", "noida"]):
+                                    location = ln
+
+                            unexplored_cutshort.append({
+                                "platform": "cutshort",
+                                "title": title,
+                                "company": company,
+                                "location": location,
+                                "salary": salary,
+                                "description": f"{title} at {company} on Cutshort. Details: {', '.join(lines[1:])}",
+                                "url": clean_url,
+                                "is_easy_apply": True,
+                                "external_url": None,
+                                "has_custom_screening": False,
+                            })
+                        except Exception:
+                            continue
+
+                    print(f"  📄 [Cutshort Step {step_idx}/{max_cs_steps}] {len(unexplored_cutshort)} unexplored collected ({known_count_cutshort} already seen).")
+
+                    if len(unexplored_cutshort) >= target_quota:
+                        print(f"  🎯 [Cutshort] Target unexplored quota reached ({len(unexplored_cutshort)} >= {target_quota}). Done with Cutshort.")
+                        break
+
+                extra_jobs.extend(unexplored_cutshort)
+            except Exception as e:
+                logger.warning(f"[Discovery] Dynamic Cutshort sweep warning: {e}")
+
+            # ----------------------------------------------------
+            # 5. Dynamic Wellfound Discovery (Option B Quota Pagination)
+            # ----------------------------------------------------
+            try:
+                unexplored_wellfound = []
+                seen_urls_wellfound = set()
+                known_count_wellfound = 0
+
+                wellfound_sources = [
+                    "https://wellfound.com/jobs?roles=Software+Engineer%2CAI+Engineer&location=India",
+                    "https://wellfound.com/role/l/ai-engineer/india",
+                    "https://wellfound.com/role/l/software-engineer/india",
+                    "https://wellfound.com/jobs?roles=AI+Engineer&location=Remote",
+                ]
+
+                max_wf_steps = min(len(wellfound_sources), max_pages)
+
+                for step_idx in range(1, max_wf_steps + 1):
+                    wf_url = wellfound_sources[step_idx - 1]
+                    try:
+                        page.goto(wf_url, wait_until="domcontentloaded", timeout=25000)
+                        page.wait_for_timeout(2500)
+
+                        # Check Cloudflare challenge
+                        if hasattr(driver, "check_cloudflare_challenge") and driver.check_cloudflare_challenge(page, "wellfound", wf_url):
+                            logger.warning(f"[Discovery] Wellfound Cloudflare challenge on {wf_url}. Skipping step.")
+                            continue
+
+                        # Scroll down to load job cards
+                        page.evaluate("window.scrollBy(0, 2500)")
+                        page.wait_for_timeout(1500)
+                    except Exception as nav_e:
+                        logger.warning(f"[Discovery] Wellfound navigation warning on step {step_idx} ({wf_url}): {nav_e}")
+                        continue
+
+                    # Wellfound job links are typically /jobs/<id>-<slug>
+                    cards = page.locator("a[href*='/jobs/']").all()
+                    if not cards:
+                        continue
+
+                    for a in cards:
+                        try:
+                            href = a.get_attribute("href")
+                            text = a.inner_text().strip()
+                            if not href or not text or len(text) < 5:
+                                continue
+
+                            # Verify href is an actual job post (e.g. /jobs/123456-title)
+                            if not re.search(r"/jobs/\d+", href) and not re.search(r"/jobs/[a-zA-Z0-9]+-[a-zA-Z0-9]+", href):
+                                continue
+
+                            full_url = href if href.startswith("http") else f"https://wellfound.com{href}"
+                            clean_url = full_url.split("?")[0]
+                            if clean_url in seen_urls_wellfound:
+                                continue
+                            seen_urls_wellfound.add(clean_url)
+
+                            lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+                            title = lines[0] if lines else "AI / Software Engineer"
+                            company = lines[1] if len(lines) > 1 else "Early Stage Startup"
+
+                            job_id = hashlib.sha256(f"wellfound:{title}:{company}".encode()).hexdigest()[:16]
+                            if is_known_job(job_id, clean_url):
+                                known_count_wellfound += 1
+                                continue
+
+                            salary = "Competitive"
+                            location = "Remote (India)"
+                            for ln in lines[1:]:
+                                if any(tok in ln.lower() for tok in ["₹", "$", "lpa", "equity", "no equity", "k"]):
+                                    salary = ln
+                                if any(loc in ln.lower() for loc in ["bangalore", "bengaluru", "chennai", "remote", "india", "mumbai", "delhi", "hyderabad", "pune"]):
+                                    location = ln
+
+                            unexplored_wellfound.append({
+                                "platform": "wellfound",
+                                "title": title,
+                                "company": company,
+                                "location": location,
+                                "salary": salary,
+                                "description": f"{title} at {company} on Wellfound. Compensation: {salary}. Location: {location}.",
+                                "url": clean_url,
+                                "is_easy_apply": True,
+                                "external_url": None,
+                                "has_custom_screening": False,
+                            })
+                        except Exception:
+                            continue
+
+                    print(f"  📄 [Wellfound Step {step_idx}/{max_wf_steps}] {len(unexplored_wellfound)} unexplored collected ({known_count_wellfound} already seen).")
+
+                    if len(unexplored_wellfound) >= target_quota:
+                        print(f"  🎯 [Wellfound] Target unexplored quota reached ({len(unexplored_wellfound)} >= {target_quota}). Done with Wellfound.")
+                        break
+
+                extra_jobs.extend(unexplored_wellfound)
+            except Exception as e:
+                logger.warning(f"[Discovery] Dynamic Wellfound sweep warning: {e}")
+
+            # ----------------------------------------------------
+            # 6. Dynamic LinkedIn Discovery (Smart Shortlist)
             # ----------------------------------------------------
             try:
                 unexplored_linkedin = []
