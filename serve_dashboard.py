@@ -84,11 +84,21 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 with open(STATE_FILE, "r", encoding="utf-8") as f:
                     state_data = json.load(f)
 
+                target_key = None
                 if job_id in state_data:
-                    state_data[job_id]["status"] = "APPLIED"
-                    state_data[job_id]["applied_at"] = datetime.now().isoformat()
+                    target_key = job_id
+                else:
+                    target_url = req.get("url", "")
+                    for k, v in state_data.items():
+                        if v.get("job_id") == job_id or (target_url and v.get("url") == target_url):
+                            target_key = k
+                            break
+
+                if target_key:
+                    state_data[target_key]["status"] = "APPLIED"
+                    state_data[target_key]["applied_at"] = datetime.now().isoformat()
                     notes = req.get("notes") or "Marked as applied via Web Dashboard."
-                    state_data[job_id]["action_notes"] = notes
+                    state_data[target_key]["action_notes"] = notes
 
                     with open(STATE_FILE, "w", encoding="utf-8") as f:
                         json.dump(state_data, f, indent=2, ensure_ascii=False)
@@ -100,8 +110,8 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                             f.write("window.INITIAL_APPLICATIONS_DATA = ")
                             json.dump(state_data, f, indent=2, ensure_ascii=False)
                             f.write(";\n")
-                    except Exception:
-                        pass
+                    except Exception as err:
+                        print(f"Warning writing data.js: {err}")
 
                     # Regenerate daily markdown report
                     try:
@@ -116,7 +126,11 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                     self.send_response(200)
                     self.send_header("Content-Type", "application/json")
                     self.end_headers()
-                    self.wfile.write(json.dumps({"status": "ok", "job_id": job_id}).encode("utf-8"))
+                    self.wfile.write(json.dumps({
+                        "status": "ok",
+                        "job_id": target_key,
+                        "job": state_data[target_key]
+                    }).encode("utf-8"))
                     return
                 else:
                     self.send_response(404)

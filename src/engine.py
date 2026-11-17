@@ -261,6 +261,13 @@ class JobApplierEngine:
                 action_notes = f"Requires manual action: {status_reason}"
                 print(f"  ⚠️ Action Required [{raw_job.platform.capitalize()}]: {raw_job.company} - {raw_job.title} ({status_reason})")
 
+            # Extract external URL if status_reason specifies a redirected page
+            ext_url = raw_job.external_url or ""
+            if "Must apply on company's redirected page:" in status_reason:
+                extracted = status_reason.split("Must apply on company's redirected page:")[-1].strip()
+                if extracted and extracted.startswith("http"):
+                    ext_url = extracted
+
             record = JobRecord(
                 job_id=job_id,
                 title=raw_job.title,
@@ -274,6 +281,7 @@ class JobApplierEngine:
                 pitch_note=eval_res.pitch_note,
                 action_notes=action_notes,
                 match_score=eval_res.score,
+                external_url=ext_url,
             )
             if not self.dry_run:
                 self.state_mgr.record_job(record)

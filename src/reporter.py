@@ -56,6 +56,9 @@ class ReportGenerator:
             for j in action_req:
                 p_name = j.get("platform", "LinkedIn").capitalize()
                 url_link = f"[{j.get('title')}]({j.get('url')})" if j.get("url") else j.get("title")
+                ext_url = j.get("external_url", "")
+                if ext_url and ext_url != j.get("url") and ext_url.startswith("http"):
+                    url_link += f"<br/>[Direct External Link ➔]({ext_url})"
                 score = f"{j.get('match_score', 80):.0f}%"
                 pitch = j.get("pitch_note", "") or "Apply with primary resume."
                 if len(pitch) > 130:

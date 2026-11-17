@@ -889,6 +889,48 @@ class PlaywrightDriver:
             page.close()
             return False, f"ERROR: {e}"
 
+    @staticmethod
+    def _detect_hirist_external_redirect(page) -> Optional[str]:
+        """
+        Detects if Hirist mandates applying on company's redirected page:
+        'Note: For your candidature to be considered, you must apply on the company's redirected page for this job. If you missed it, complete your application here →'
+        Returns the external URL if found, or 'external_redirect_required' if URL cannot be extracted, else None.
+        """
+        try:
+            page_text = page.locator("body").inner_text().lower()
+            redirect_phrases = [
+                "apply on the company's redirected page",
+                "redirected page for this job",
+                "for your candidature to be considered, you must apply on the company",
+                "complete your application here",
+                "if you missed it, complete your application",
+            ]
+            if any(phrase in page_text for phrase in redirect_phrases):
+                # Search for redirected anchor links
+                links = page.locator("a:has-text('here'), a:has-text('complete your application'), a:has-text('redirected page'), a:has-text('Apply on company')").all()
+                for lnk in links:
+                    try:
+                        href = lnk.get_attribute("href")
+                        if href and href.startswith("http") and "hirist.tech" not in href:
+                            return href
+                    except Exception:
+                        pass
+                # Check all external links on page matching 'here'
+                all_links = page.locator("a").all()
+                for lnk in all_links:
+                    try:
+                        t = lnk.inner_text().strip().lower()
+                        if "here" in t or "redirect" in t or "complete" in t:
+                            href = lnk.get_attribute("href")
+                            if href and href.startswith("http") and "hirist.tech" not in href:
+                                return href
+                    except Exception:
+                        pass
+                return "external_redirect_required"
+        except Exception:
+            pass
+        return None
+
     def apply_hirist(
         self,
         url: str,
@@ -957,6 +999,12 @@ class PlaywrightDriver:
                 "button, a, span, div.btn"
             ).filter(has_text=re.compile(r"^\s*(applied|already applied)\s*$", re.I))
             if already_applied.count() > 0 and already_applied.first.is_visible():
+                redirect_url = self._detect_hirist_external_redirect(page)
+                if redirect_url:
+                    logger.info(f"[Hirist Live] Hirist marked applied, but external redirected page application required: {redirect_url}")
+                    print(f"⚠️ Hirist role requires applying on company's redirected page: {url}")
+                    page.close()
+                    return False, f"ACTION_REQUIRED: Must apply on company's redirected page: {redirect_url}"
                 logger.info(f"[Hirist Live] Already applied to {url}.")
                 print(f"ℹ️ Already applied to Hirist role: {url}")
                 page.close()
@@ -1050,6 +1098,12 @@ class PlaywrightDriver:
             )
 
             if is_confirmed:
+                redirect_url = self._detect_hirist_external_redirect(page)
+                if redirect_url:
+                    logger.info(f"[Hirist Live] Applied on Hirist, but external redirected page application required: {redirect_url}")
+                    print(f"⚠️ Application submitted on Hirist, but employer requires external ATS completion: {url}")
+                    page.close()
+                    return False, f"ACTION_REQUIRED: Must apply on company's redirected page: {redirect_url}"
                 print(f"🎉 Successfully verified live application to Hirist: {url}!")
                 page.close()
                 return True, "APPLIED"

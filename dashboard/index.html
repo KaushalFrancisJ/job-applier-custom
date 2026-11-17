@@ -862,6 +862,11 @@
             <td class="py-3 px-4 whitespace-nowrap text-[11px] text-slate-400">${dateStr || '—'}</td>
             <td class="py-3 px-4 whitespace-nowrap text-right" onclick="event.stopPropagation()">
               <div class="flex items-center justify-end gap-1.5">
+                ${j.status !== 'APPLIED' ? `
+                  <button onclick="markJobApplied('${j.job_id}')" class="p-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/30 transition" title="Mark as Applied">
+                    <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                  </button>
+                ` : ''}
                 ${j.pitch_note ? `
                   <button onclick="copyPitch('${j.job_id}')" class="p-1.5 rounded-lg bg-slate-800 hover:bg-indigo-600/30 text-indigo-300 transition" title="Copy Tailored Pitch">
                     <i data-lucide="copy" class="w-3.5 h-3.5"></i>
@@ -911,6 +916,11 @@
             <div class="flex items-center justify-between gap-2 pt-3 mt-3 border-t border-slate-800/80" onclick="event.stopPropagation()">
               <span class="text-[11px] text-slate-500 truncate">${(j.applied_at || '').slice(0, 10)}</span>
               <div class="flex items-center gap-1.5">
+                ${j.status !== 'APPLIED' ? `
+                  <button onclick="markJobApplied('${j.job_id}')" class="px-2 py-1 rounded bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/30 font-medium text-[11px] flex items-center gap-1 transition" title="Mark as Applied">
+                    <i data-lucide="check" class="w-3 h-3"></i> Apply
+                  </button>
+                ` : ''}
                 ${j.pitch_note ? `
                   <button onclick="copyPitch('${j.job_id}')" class="px-2 py-1 rounded bg-slate-800 hover:bg-indigo-600/30 text-indigo-300 font-medium text-[11px] flex items-center gap-1 transition">
                     <i data-lucide="copy" class="w-3 h-3"></i> Copy
@@ -992,32 +1002,48 @@
       showToast(`📋 Pitch copied for ${job.company}!`);
     }
 
-    // Mark Job as Applied (calls API or updates locally)
+    // Mark Job as Applied (calls API and updates local view immediately)
     async function markJobApplied(jobId) {
-      try {
-        const resp = await fetch('/api/mark_applied', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ job_id: jobId })
-        });
-        if (resp.ok) {
-          showToast('✅ Job marked as applied and synced!');
-        } else {
-          // Local update fallback
-          const j = allJobs.find(x => x.job_id === jobId);
-          if (j) j.status = 'APPLIED';
-          showToast('✅ Job status updated locally!');
-        }
-      } catch (e) {
-        const j = allJobs.find(x => x.job_id === jobId);
-        if (j) j.status = 'APPLIED';
-        showToast('✅ Job marked as applied!');
+      const nowIso = new Date().toISOString();
+      const jobRecord = allJobs.find(x => x.job_id === jobId || (x.url && x.url === jobId));
+      if (jobRecord) {
+        jobRecord.status = 'APPLIED';
+        jobRecord.applied_at = nowIso;
+        jobRecord.action_notes = 'Marked as applied via Web Dashboard.';
       }
 
+      // Re-render UI immediately for instant feedback
       computeKPIs();
       renderCharts();
       renderListings();
       closeJobModal();
+
+      try {
+        const resp = await fetch('/api/mark_applied', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            job_id: jobId,
+            url: jobRecord ? jobRecord.url : ''
+          })
+        });
+        if (resp.ok) {
+          const resData = await resp.json();
+          if (resData.job && jobRecord) {
+            Object.assign(jobRecord, resData.job);
+          }
+          showToast('✅ Job marked as applied and synced to database!');
+        } else {
+          showToast('✅ Status updated locally in dashboard view.');
+        }
+      } catch (e) {
+        showToast('✅ Status updated locally in dashboard view.');
+      }
+
+      // Final pass to ensure all charts & counters reflect backend data
+      computeKPIs();
+      renderCharts();
+      renderListings();
     }
 
     // Toast helper
