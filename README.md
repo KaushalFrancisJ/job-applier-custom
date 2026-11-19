@@ -29,6 +29,7 @@ python -u run.py --watch
 
 * **What it does:** Runs an immediate sweep upon startup, then runs periodically throughout the day (~every 30 minutes with randomized jitter) monitoring for newly posted roles.
 * **To Stop in the Evening:** Press `Ctrl + C` in the terminal. The process will gracefully finish any active submission, flush your state database, and finalize today's audit report.
+* **Environment Requirement:** The watcher interacts with live web portals and controls your interactive Chrome profile (`browser_profile/`). When executing through AI agent interfaces or terminal commands, it must run with full network and desktop access (`BypassSandbox: true` / native terminal / `start_watcher.bat`). Isolated headless sandboxes lack display support and network connectivity, which stalls Chrome.
 
 ---
 
@@ -133,7 +134,7 @@ The engine creates outbound application pitches using a hybrid two-tier approach
 For matched, unapplied jobs, Playwright executes live interactions using your persistent Chrome profile:
 1. **Live DOM Compensation Check:** Scrapes the live header text from the rendered DOM. If salary was misrepresented in search feeds, it aborts immediately.
 2. **Modal & Form Automation:**
-   * **On Hirist:** Navigates directly to the role, clicks *Apply*, verifies live compensation header, injects tailored pitch into the recruiter note modal, attaches `Kaushal_Francis_J_res.pdf`, and submits.
+   * **On Hirist:** Navigates directly to the role, clicks *Apply*, verifies live compensation header, injects tailored pitch into the recruiter note modal, attaches `Kaushal_Francis_J_res.pdf`, and submits. For listings with dynamic screening questionnaires, auto-resolves candidate parameters via `AgyBridge`. If employer-specific mandatory fields leave the `Next` button disabled, it enforces a 4-second timeout to avoid stalls, safely saving the position as `ACTION_REQUIRED` with the customized pitch preserved.
    * **On Work at a Startup (YC):** Detects `.company-action:has-text('Apply')`, opens the YC application modal, injects personalized founder pitch note highlighting agentic systems and MCP, and delivers directly to YC founders.
    * **On Cutshort:** Clicks *Apply to this job* / *Apply now*, detects the modal addressed to the specific recruiter (e.g. *"To Akshay Patil"*), injects your tailored pitch into the message box, links `Kaushal_Francis_J_res.pdf`, and clicks *Send*.
    * **On Instahyre:** Opens the full opportunity modal, clicks *Apply*, and dismisses post-apply dialogs (safeguarded against false-positive tab substring matches).

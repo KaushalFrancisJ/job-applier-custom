@@ -1309,9 +1309,18 @@ class PlaywrightDriver:
                 break
 
         if next_btn:
-            print(f"Submitting screening form via '{next_btn.inner_text().strip()}'...")
-            next_btn.click()
-            page.wait_for_timeout(4500)
+            try:
+                if not next_btn.is_enabled():
+                    logger.warning("[Hirist Screening] Next/Submit button is disabled (mandatory questionnaire fields unfilled).")
+                    print("⚠️ Screening Next button is disabled. Transitioning to ACTION_REQUIRED...")
+                    return False
+                print(f"Submitting screening form via '{next_btn.inner_text().strip()}'...")
+                next_btn.click(timeout=4000)
+                page.wait_for_timeout(4500)
+            except Exception as click_err:
+                logger.warning(f"[Hirist Screening] Next/Submit click failed: {click_err}")
+                print(f"⚠️ Could not click screening Next button: {click_err}. Transitioning to ACTION_REQUIRED...")
+                return False
 
         # Verify confirmation
         current_url = page.url.lower()
