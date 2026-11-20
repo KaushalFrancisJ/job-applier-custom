@@ -75,6 +75,14 @@ This skill provides the end-to-end runbook for automating job applications acros
      - In recruiter note modal, inject pitch note and attach `Kaushal_Francis_J_res.pdf`.
      - Submit application and confirm status.
      - **Dynamic Screening Questionnaire Guardrail:** If redirected to `/screening` or mandatory question modals, the driver auto-resolves standard parameters (CTC, notice period, location, academics) and drafts technical answers via `AgyBridge`. If employer-specific complex fields leave the `Next` button disabled, the driver enforces a 4-second timeout to avoid indefinite hanging, gracefully recording the role as `status: ACTION_REQUIRED` in `state/applications.json` with the tailored pitch pre-drafted.
+      - **Below-Box Secondary Application Guardrail:** The driver inspects the container directly below/around the Apply button (`#apply-btn`, `.apply-button`, `div.apply-btn`) for notices ("another application is needed", "fill form", redirected page) and external form links, automatically routing to `ACTION_REQUIRED` with `external_url` populated.
+   * **Wellfound External Secondary Application Guardrail:**
+      - In addition to clicking 1-Click Apply, the driver inspects the JD text and DOM for external application links (Google Forms, Typeform, Airtable, Notion, Ashby, Greenhouse, Lever, etc.), company career URLs (e.g. `moring.ai/jobs/...`), and email instructions (`mailto:careers@...`).
+      - If detected, the driver routes the job to `status: ACTION_REQUIRED` with `external_url` populated so the user is alerted to fill the secondary application.
+   * **Rejection Tracking & State Synchronization:**
+      - When an employer rejection is received (e.g. Cutshort Lightning), the job is recorded as `status: REJECTED` with `rejected_at` and `rejection_reason` in `state/applications.json`.
+      - `StateManager` persists `REJECTED` status across subsequent sweeps so watcher runs never overwrite manual rejection records.
+      - Synced directly with the web dashboard under the dedicated `❌ Rejected` tab.
    * **Cutshort Recruiter Note Automation:**
      - On Cutshort cards/pages, trigger `Apply to this job` or `Apply now`.
      - Detect the active recruiter modal (`To <Recruiter Name>`).
@@ -129,6 +137,7 @@ start_watcher.bat
 * **Interval:** ~30 minutes with randomized jitter (±5 min) to prevent bot detection.
 * **Stop:** Press `Ctrl + C` in the terminal (cleanly flushes state and finalizes reports).
 * **Single Process Hygiene:** Before launching a new `--watch` process, always check running tasks/processes to ensure no previous watcher instance is already running in the background.
+* **Strict Agent Sandbox Rule (Always Run Unsandboxed):** When starting or relaunching the watcher via tool calls, **always set `BypassSandbox: true` and `IsDaemon: true`**. The watcher controls an interactive Chrome profile (`browser_profile/`) and makes live HTTPS requests to portal endpoints. Running in standard sandbox mode fails because the sandbox lacks outbound network access and write-locks the browser profile and `state/applications.json`.
 * **Live Browser & Network Environment:** Because Playwright controls an interactive Chrome profile (`browser_profile/`) and makes real-time HTTPS calls across candidate feeds (Hirist, WAAS, Instahyre, Cutshort, Wellfound), the watcher must be run with full network and desktop session access (`BypassSandbox: true` / native terminal / `start_watcher.bat`). Running in a headless sandbox without network access blocks Chrome and prevents sweeps.
 * **Production Verified Metrics:** Live verified in production with 1-Click submissions on Hirist (e.g., IndiDino SDE Full Stack, 82% match), 105+ known roles deduplicated in real-time, WAAS 5/5 rolling weekly limit tracking with automated cooldown unlock queue, and 12-role LinkedIn discovery sweeps.
 

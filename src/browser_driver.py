@@ -111,6 +111,84 @@ class PlaywrightDriver:
             return True
         return False
 
+    @staticmethod
+    def _detect_wellfound_external_application(page) -> Optional[Tuple[str, str]]:
+        """
+        Detects if a Wellfound job description mandates a secondary or external application/form:
+        - External form links (Google Forms, Typeform, Airtable, Notion, Tally, Ashby, Greenhouse, Lever, etc.)
+        - External company career/job application links (e.g. moring.ai/jobs/...)
+        - Explicit 'To apply, send resume to <email>' or 'fill out this form' phrases
+        Returns (url_or_email, reason_note) if found, else None.
+        """
+        try:
+            body = page.locator("body")
+            page_text = body.inner_text().lower()
+
+            # 1. Check for external form URLs in anchor tags
+            form_domains = [
+                "forms.gle", "docs.google.com/forms", "typeform.com",
+                "airtable.com", "notion.site", "notion.so", "tally.so",
+                "ashbyhq.com", "greenhouse.io", "lever.co", "workable.com"
+            ]
+            links = page.locator("a").all()
+            for lnk in links:
+                try:
+                    href = lnk.get_attribute("href")
+                    if not href:
+                        continue
+                    href_lower = href.lower()
+                    for dom in form_domains:
+                        if dom in href_lower:
+                            return href, f"Secondary external application form ({dom})"
+
+                    # Check for external company careers/jobs links outside wellfound.com
+                    if href.startswith("http") and not any(ign in href_lower for ign in [
+                        "wellfound.com", "angel.co", "twitter.com", "x.com", "linkedin.com",
+                        "github.com", "facebook.com", "instagram.com", "youtube.com", "status.wellfound.com"
+                    ]):
+                        link_text = lnk.inner_text().lower()
+                        if any(k in href_lower or k in link_text for k in ["/jobs/", "/job/", "/careers/", "/apply", "application", "career"]):
+                            return href, f"External company application link ({href})"
+                except Exception:
+                    pass
+
+            # 2. Check for explicit phrases in page text
+            ext_phrases = [
+                "full role details and application",
+                "another application is needed",
+                "secondary application",
+                "fill out this form",
+                "fill up this form",
+                "fill this form",
+                "fill out the application form",
+                "mandatory application form",
+                "apply directly at",
+            ]
+            if any(p in page_text for p in ext_phrases):
+                for lnk in links:
+                    try:
+                        href = lnk.get_attribute("href")
+                        if href and href.startswith("http") and "wellfound.com" not in href.lower():
+                            return href, "External application link in job description"
+                    except Exception:
+                        pass
+
+            # 3. Check for mailto application instructions
+            mail_links = page.locator("a[href^='mailto:']").all()
+            for ml in mail_links:
+                try:
+                    href = ml.get_attribute("href")
+                    if href:
+                        email = href.replace("mailto:", "").split("?")[0].strip()
+                        if any(k in page_text for k in ["to apply", "send your resume", "email your resume", "send resume"]):
+                            return f"mailto:{email}", f"Employer requests application via email to {email}"
+                except Exception:
+                    pass
+
+        except Exception as e:
+            logger.warning(f"[Wellfound] External application detection warning: {e}")
+        return None
+
     def apply_wellfound(
         self,
         url: str,
@@ -184,11 +262,19 @@ class PlaywrightDriver:
                 except Exception as e:
                     logger.warning(f"[Wellfound Live] Could not parse header salary: {e}")
 
+            # Check if this specific job mandates secondary / external application
+            ext_app = self._detect_wellfound_external_application(page)
+
             # Check if this specific job was already applied (button says 'Applied')
             already_applied = page.locator("button.styles_applyButton__7gnpI:has-text('Applied'), button:has-text('Applied to this role')")
             if already_applied.count() > 0 and already_applied.first.is_visible():
                 logger.info(f"[Wellfound Live] Button says 'Applied'. Already applied to {url}.")
                 print(f"ℹ️ Already applied to {url} previously.")
+                if ext_app:
+                    ext_url, reason = ext_app
+                    print(f"⚠️ Secondary external application required: {ext_url}")
+                    page.close()
+                    return False, f"ACTION_REQUIRED: Applied on Wellfound, but secondary external application required: {ext_url} ({reason})"
                 page.close()
                 return True, "ALREADY_APPLIED"
 
@@ -212,7 +298,12 @@ class PlaywrightDriver:
                     logger.info(f"[Wellfound Live] External apply link detected: {href}")
                     print(f"⚠️ External apply link: {href}")
                     page.close()
-                    return False, f"EXTERNAL_LINK: {href}"
+                    return False, f"ACTION_REQUIRED: External application required: {href}"
+                elif ext_app:
+                    ext_url, reason = ext_app
+                    print(f"⚠️ External application required from JD: {ext_url}")
+                    page.close()
+                    return False, f"ACTION_REQUIRED: External application required: {ext_url} ({reason})"
                 else:
                     logger.warning(f"[Wellfound Live] Could not find Apply button on {url}.")
                 page.close()
@@ -282,10 +373,17 @@ class PlaywrightDriver:
                 page.wait_for_timeout(4000)
                 print(f"🎉 Successfully submitted live application to {url}!")
                 page.close()
+                if ext_app:
+                    ext_url, reason = ext_app
+                    print(f"⚠️ Secondary external application required: {ext_url}")
+                    return False, f"ACTION_REQUIRED: Applied on Wellfound, but secondary external application required: {ext_url} ({reason})"
                 return True, "APPLIED"
             else:
                 print("⚠️ Submit button not found in modal.")
                 page.close()
+                if ext_app:
+                    ext_url, reason = ext_app
+                    return False, f"ACTION_REQUIRED: Secondary external application required: {ext_url} ({reason})"
                 return False, "ACTION_REQUIRED: Submit button not accessible"
 
         except Exception as e:
@@ -892,37 +990,101 @@ class PlaywrightDriver:
     @staticmethod
     def _detect_hirist_external_redirect(page) -> Optional[str]:
         """
-        Detects if Hirist mandates applying on company's redirected page:
-        'Note: For your candidature to be considered, you must apply on the company's redirected page for this job. If you missed it, complete your application here →'
+        Detects if Hirist mandates applying on company's redirected page or secondary application:
+        - Notice right below or inside the apply box: 'Note: another application is needed...', etc.
+        - 'Note: For your candidature to be considered, you must apply on the company's redirected page...'
+        - External form links (Google Forms, Typeform, Airtable, Notion, Tally, etc.)
         Returns the external URL if found, or 'external_redirect_required' if URL cannot be extracted, else None.
         """
         try:
-            page_text = page.locator("body").inner_text().lower()
+            body = page.locator("body")
+            page_text = body.inner_text().lower()
             redirect_phrases = [
                 "apply on the company's redirected page",
                 "redirected page for this job",
                 "for your candidature to be considered, you must apply on the company",
+                "for your candidature to be considered",
                 "complete your application here",
                 "if you missed it, complete your application",
+                "another application is needed",
+                "another application is required",
+                "secondary application",
+                "fill out this form",
+                "fill up this form",
+                "fill this form",
+                "fill out the application form",
+                "application form below",
+                "mandatory form",
+                "external form",
+                "google form",
+                "typeform",
+                "apply directly at",
+                "apply directly on",
+                "candidature to be considered, please fill",
             ]
+
+            # 1. Specifically inspect the container and area right below or inside the Apply button / box
+            apply_selectors = [
+                "#apply-btn",
+                ".apply-button",
+                "div.apply-btn",
+                "button:has-text('Apply')",
+                "a:has-text('Apply')",
+                "div[class*='apply']",
+            ]
+            for sel in apply_selectors:
+                loc = page.locator(sel)
+                if loc.count() > 0:
+                    try:
+                        parent = loc.first.locator("xpath=..")
+                        sibling = loc.first.locator("xpath=following-sibling::*").first
+                        for container in [parent, sibling]:
+                            if container.count() > 0:
+                                c_text = container.inner_text().lower()
+                                if any(phrase in c_text for phrase in redirect_phrases):
+                                    c_links = container.locator("a").all()
+                                    for lnk in c_links:
+                                        href = lnk.get_attribute("href")
+                                        if href and href.startswith("http") and "hirist.tech" not in href and "hirist.com" not in href:
+                                            return href
+                    except Exception:
+                        pass
+
+            # 2. Check for explicit external form links anywhere on page
+            form_domains = [
+                "forms.gle", "docs.google.com/forms", "typeform.com",
+                "airtable.com", "notion.site", "notion.so", "tally.so",
+                "ashbyhq.com", "greenhouse.io", "lever.co", "workable.com"
+            ]
+            all_links = page.locator("a").all()
+            for lnk in all_links:
+                try:
+                    href = lnk.get_attribute("href")
+                    if not href:
+                        continue
+                    href_lower = href.lower()
+                    for dom in form_domains:
+                        if dom in href_lower:
+                            return href
+                except Exception:
+                    pass
+
+            # 3. Check general page text for phrases
             if any(phrase in page_text for phrase in redirect_phrases):
-                # Search for redirected anchor links
-                links = page.locator("a:has-text('here'), a:has-text('complete your application'), a:has-text('redirected page'), a:has-text('Apply on company')").all()
+                links = page.locator("a:has-text('here'), a:has-text('complete your application'), a:has-text('redirected page'), a:has-text('Apply on company'), a:has-text('fill form'), a:has-text('application form')").all()
                 for lnk in links:
                     try:
                         href = lnk.get_attribute("href")
-                        if href and href.startswith("http") and "hirist.tech" not in href:
+                        if href and href.startswith("http") and "hirist.tech" not in href and "hirist.com" not in href:
                             return href
                     except Exception:
                         pass
-                # Check all external links on page matching 'here'
-                all_links = page.locator("a").all()
                 for lnk in all_links:
                     try:
                         t = lnk.inner_text().strip().lower()
-                        if "here" in t or "redirect" in t or "complete" in t:
+                        if any(k in t for k in ["here", "redirect", "complete", "apply", "form"]):
                             href = lnk.get_attribute("href")
-                            if href and href.startswith("http") and "hirist.tech" not in href:
+                            if href and href.startswith("http") and "hirist.tech" not in href and "hirist.com" not in href:
                                 return href
                     except Exception:
                         pass
@@ -1010,6 +1172,9 @@ class PlaywrightDriver:
                 page.close()
                 return True, "ALREADY_APPLIED"
 
+            # Pre-check for secondary application / external redirect below apply box
+            ext_redirect = self._detect_hirist_external_redirect(page)
+
             # Find Apply button
             apply_btn = None
             for sel in [
@@ -1025,6 +1190,11 @@ class PlaywrightDriver:
                     break
 
             if not apply_btn:
+                if ext_redirect:
+                    logger.info(f"[Hirist Live] No standard apply button, but external redirect detected: {ext_redirect}")
+                    print(f"⚠️ Must apply on company's redirected page: {ext_redirect}")
+                    page.close()
+                    return False, f"ACTION_REQUIRED: Must apply on company's redirected page: {ext_redirect}"
                 logger.warning(f"[Hirist Live] Could not find Apply button on {url}.")
                 page.close()
                 return False, "NO_APPLY_BUTTON"
@@ -1098,7 +1268,7 @@ class PlaywrightDriver:
             )
 
             if is_confirmed:
-                redirect_url = self._detect_hirist_external_redirect(page)
+                redirect_url = self._detect_hirist_external_redirect(page) or ext_redirect
                 if redirect_url:
                     logger.info(f"[Hirist Live] Applied on Hirist, but external redirected page application required: {redirect_url}")
                     print(f"⚠️ Application submitted on Hirist, but employer requires external ATS completion: {url}")

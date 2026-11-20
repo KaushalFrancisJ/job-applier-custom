@@ -269,6 +269,9 @@
         <button data-tab="EXPIRED" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition bg-slate-800 text-slate-300 hover:bg-slate-700">
           ⏱️ Expired (<span id="count-expired">0</span>)
         </button>
+        <button data-tab="REJECTED" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition bg-slate-800 text-slate-300 hover:bg-slate-700">
+          ❌ Rejected (<span id="count-rejected">0</span>)
+        </button>
       </div>
 
       <!-- Bottom Row: Search & Dropdown Filters -->
@@ -501,6 +504,7 @@
       QUOTA_EXHAUSTED: { label: 'Quota Queue', color: 'bg-purple-500/15 text-purple-400 border border-purple-500/30' },
       FILTERED_OUT: { label: 'Filtered', color: 'bg-slate-700/30 text-slate-400 border border-slate-700/40' },
       EXPIRED: { label: 'Expired', color: 'bg-rose-900/20 text-rose-400 border border-rose-900/30' },
+      REJECTED: { label: 'Rejected', color: 'bg-rose-500/20 text-rose-400 border border-rose-500/30' },
       FAILED: { label: 'Failed', color: 'bg-red-500/20 text-red-400 border border-red-500/30' },
     };
 
@@ -557,6 +561,7 @@
       const quotaQueue = allJobs.filter(j => j.status === 'QUOTA_EXHAUSTED');
       const filtered = allJobs.filter(j => j.status === 'FILTERED_OUT');
       const expired = allJobs.filter(j => j.status === 'EXPIRED');
+      const rejected = allJobs.filter(j => j.status === 'REJECTED');
 
       // Dynamic platform breakdown for jobs applied today
       const todayPlatforms = {};
@@ -618,6 +623,8 @@
       document.getElementById('count-filtered').textContent = filtered.length;
       const elExpired = document.getElementById('count-expired');
       if (elExpired) elExpired.textContent = expired.length;
+      const elRejected = document.getElementById('count-rejected');
+      if (elRejected) elRejected.textContent = rejected.length;
     }
 
     // Render interactive charts
@@ -762,6 +769,7 @@
         if (currentTab === 'QUOTA_EXHAUSTED' && j.status !== 'QUOTA_EXHAUSTED') return false;
         if (currentTab === 'FILTERED_OUT' && j.status !== 'FILTERED_OUT') return false;
         if (currentTab === 'EXPIRED' && j.status !== 'EXPIRED') return false;
+        if (currentTab === 'REJECTED' && j.status !== 'REJECTED') return false;
 
         // Platform Filter
         if (platform !== 'ALL' && j.platform !== platform) return false;

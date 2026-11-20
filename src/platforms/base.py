@@ -15,8 +15,8 @@ class RawJob:
     company: str
     location: str
     salary: str
-    description: str
-    url: str
+    description: str = ""
+    url: str = ""
     is_easy_apply: bool = True
     external_url: Optional[str] = None
     has_custom_screening: bool = False
