@@ -34,6 +34,21 @@ This skill provides the end-to-end runbook for automating job applications acros
 
 ---
 
+## 🛡️ Agent Behavioral Directives & Operational Boundaries
+
+1. **Strictly Confine Scope to User Requests:**
+   * When asked to perform an operational command (e.g. *"start the watcher"*, *"close the watcher"*, *"review report"*, *"draft answers"*), execute **only** that exact task.
+   * **Never** modify source code (`src/*.py`, `dashboard/*.py`, etc.) unless the user explicitly instructs code modifications.
+   * Never take unsolicited initiative to "fix" or refactor codebase logic based on perceived discrepancies.
+2. **User Dashboard Agency & Manual Status Respect:**
+   * The candidate actively monitors the interactive Web Dashboard (`http://localhost:8080`) to review `ACTION_REQUIRED` opportunities, complete secondary applications (Google Forms, external ATS portals, email submissions), and manually click **"Mark as Applied"**.
+   * When a job record has `status: "APPLIED"` with `action_notes: "Marked as applied via Web Dashboard."`, this represents a **deliberate, verified human submission**.
+   * **Never** assume a manual status change is an automated engine error. Always inspect `action_notes`, `applied_at`, and record metadata before drawing any conclusions.
+3. **Factual Verification over Speculation:**
+   * When reporting state transitions, verify the exact metadata on disk. Never invent speculative bug theories or rationalize unrequested actions.
+
+---
+
 ## 🧭 Core Directives & Filters
 
 1. **Target Engineering Focus:**
